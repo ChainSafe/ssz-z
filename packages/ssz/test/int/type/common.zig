@@ -1,7 +1,7 @@
 const std = @import("std");
 const fromHex = @import("util").fromHex;
-const initZeroHash = @import("hash").initZeroHash;
-const deinitZeroHash = @import("hash").deinitZeroHash;
+const initZeroHash = @import("persistent_merkle_tree").initZeroHash;
+const deinitZeroHash = @import("persistent_merkle_tree").deinitZeroHash;
 const toRootHex = @import("util").toRootHex;
 
 pub const TypeTestCase = struct {

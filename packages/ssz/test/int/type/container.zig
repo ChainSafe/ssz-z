@@ -2,7 +2,7 @@ const std = @import("std");
 const createContainerType = @import("ssz").createContainerType;
 const createListBasicType = @import("ssz").createListBasicType;
 const createUintType = @import("ssz").createUintType;
-const sha256Hash = @import("hash").sha256Hash;
+const sha256Hash = @import("persistent_merkle_tree").sha256Hash;
 const TestCase = @import("common.zig").TypeTestCase;
 
 test "ContainerType with 2 uints" {

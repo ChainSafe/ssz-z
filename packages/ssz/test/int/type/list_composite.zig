@@ -1,14 +1,14 @@
 const std = @import("std");
 const toRootHex = @import("util").toRootHex;
 const fromHex = @import("util").fromHex;
-const initZeroHash = @import("hash").initZeroHash;
-const deinitZeroHash = @import("hash").deinitZeroHash;
+const initZeroHash = @import("persistent_merkle_tree").initZeroHash;
+const deinitZeroHash = @import("persistent_merkle_tree").deinitZeroHash;
 const TestCase = @import("common.zig").TypeTestCase;
 const createUintType = @import("ssz").createUintType;
 const createListCompositeType = @import("ssz").createListCompositeType;
 const createByteVectorType = @import("ssz").createByteVectorType;
 const createContainerType = @import("ssz").createContainerType;
-const sha256Hash = @import("hash").sha256Hash;
+const sha256Hash = @import("persistent_merkle_tree").sha256Hash;
 const createListBasicType = @import("ssz").createListBasicType;
 
 test "ListCompositeType - element type ByteVectorType" {
