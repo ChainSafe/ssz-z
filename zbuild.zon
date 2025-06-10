@@ -61,7 +61,7 @@
             .imports = .{ .build_options, .hex, .hashing },
         },
         .ssz = .{
-            .root_source_file = "src/ssz/view_du.zig",
+            .root_source_file = "src/ssz/root.zig",
             .imports = .{ .build_options, .hex, .hashing, .persistent_merkle_tree },
         },
         .consensus_types = .{
@@ -128,12 +128,12 @@
                 .imports = .{ .hashing, .zbench },
             },
         },
-        .write_bun_ffi = .{
-            .root_module = .{
-                .root_source_file = "src/bun_ffi/write_types.zig",
-                .imports = .{ .build_options, .persistent_merkle_tree, .ssz, .consensus_types },
-            },
-        },
+        // .write_bun_ffi = .{
+        //     .root_module = .{
+        //         .root_source_file = "src/bun_ffi/write_types.zig",
+        //         .imports = .{ .build_options, .persistent_merkle_tree, .ssz, .consensus_types },
+        //     },
+        // },
     },
     .libraries = .{
         .types = .{
@@ -153,14 +153,14 @@
         .generic_spec_tests = .{
             .root_module = .{
                 .root_source_file = "test/spec/generic_tests.zig",
-                .imports = .{ .hex, .snappy, .ssz, .spec_test_options, .yaml },
+                .imports = .{ .hex, .snappy, .persistent_merkle_tree, .ssz, .spec_test_options, .yaml },
             },
             .filters = .{},
         },
         .static_spec_tests = .{
             .root_module = .{
                 .root_source_file = "test/spec/static_tests.zig",
-                .imports = .{ .hex, .snappy, .ssz, .build_options, .spec_test_options, .consensus_types, .yaml },
+                .imports = .{ .hex, .snappy, .persistent_merkle_tree, .ssz, .build_options, .spec_test_options, .consensus_types, .yaml },
             },
             .filters = .{},
         },
