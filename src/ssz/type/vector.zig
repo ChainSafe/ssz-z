@@ -5,6 +5,7 @@ const isFixedType = @import("type_kind.zig").isFixedType;
 const OffsetIterator = @import("offsets.zig").OffsetIterator;
 const merkleize = @import("hashing").merkleize;
 const maxChunksToDepth = @import("hashing").maxChunksToDepth;
+const Node = @import("persistent_merkle_tree").Node;
 
 pub fn FixedVectorType(comptime ST: type, comptime _length: comptime_int) type {
     comptime {
@@ -82,6 +83,57 @@ pub fn FixedVectorType(comptime ST: type, comptime _length: comptime_int) type {
                     }
                 }
                 try merkleize(@ptrCast(&chunks), chunk_depth, out);
+            }
+        };
+
+        pub const tree = struct {
+            pub fn toValue(node: Node.Id, pool: *Node.Pool, out: *Type) !void {
+                var nodes: [chunk_count]Node.Id = undefined;
+
+                try node.getNodesAtDepth(pool, chunk_depth, 0, &nodes);
+
+                if (comptime isBasicType(Element)) {
+                    // tightly packed list
+                    for (0..length) |i| {
+                        try Element.tree.toValuePacked(
+                            nodes[i * Element.fixed_size / 32],
+                            pool,
+                            i,
+                            &out[i],
+                        );
+                    }
+                } else {
+                    for (0..length) |i| {
+                        try Element.tree.toValue(
+                            nodes[i],
+                            pool,
+                            &out[i],
+                        );
+                    }
+                }
+            }
+
+            pub fn fromValue(pool: *Node.Pool, value: *const Type) !Node.Id {
+                var nodes: [chunk_count]Node.Id = undefined;
+
+                if (comptime isBasicType(Element)) {
+                    const items_per_chunk = 32 / Element.fixed_size;
+                    var l: usize = 0;
+                    for (0..chunk_count) |i| {
+                        var leaf_buf = [_]u8{0} ** 32;
+                        for (0..items_per_chunk) |j| {
+                            _ = Element.serializeIntoBytes(&value[l], leaf_buf[j * Element.fixed_size ..]);
+                            l += 1;
+                            if (l >= length) break;
+                        }
+                        nodes[i] = try pool.createLeaf(&leaf_buf, false);
+                    }
+                } else {
+                    for (0..chunk_count) |i| {
+                        nodes[i] = try Element.tree.fromValue(pool, &value[i]);
+                    }
+                }
+                return try Node.fillWithContents(pool, &nodes, chunk_depth, false);
             }
         };
 
@@ -200,6 +252,32 @@ pub fn VariableVectorType(comptime ST: type, comptime _length: comptime_int) typ
                     try Element.serialized.hashTreeRoot(allocator, data[offsets[i]..offsets[i + 1]], &chunks[i]);
                 }
                 try merkleize(@ptrCast(&chunks), chunk_depth, out);
+            }
+        };
+
+        pub const tree = struct {
+            pub fn toValue(allocator: std.mem.Allocator, node: Node.Id, pool: *Node.Pool, out: *Type) !void {
+                var nodes: [chunk_count]Node.Id = undefined;
+
+                try node.getNodesAtDepth(pool, chunk_depth, 0, &nodes);
+
+                for (0..length) |i| {
+                    try Element.tree.toValue(
+                        allocator,
+                        nodes[i],
+                        pool,
+                        &out[i],
+                    );
+                }
+            }
+
+            pub fn fromValue(allocator: std.mem.Allocator, pool: *Node.Pool, value: *const Type) !Node.Id {
+                var nodes: [chunk_count]Node.Id = undefined;
+
+                for (0..chunk_count) |i| {
+                    nodes[i] = try Element.tree.fromValue(allocator, pool, &value[i]);
+                }
+                return try Node.fillWithContents(pool, &nodes, chunk_depth, false);
             }
         };
 

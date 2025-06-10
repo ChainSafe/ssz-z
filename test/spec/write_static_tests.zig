@@ -75,7 +75,7 @@ pub fn main() !void {
             const type_name_tests_dir = try std.fs.cwd().openDir(type_name_tests_dir_name, .{ .iterate = true });
             var type_name_tests_dir_it = type_name_tests_dir.iterate();
             while (try type_name_tests_dir_it.next()) |type_name_test_entry| {
-                switch (g_test_entry.kind) {
+                switch (type_name_test_entry.kind) {
                     .directory => {},
                     else => {
                         continue;
@@ -93,7 +93,7 @@ pub fn main() !void {
                 const test_suite_dir = try std.fs.cwd().openDir(test_suite_dir_name, .{ .iterate = true });
                 var test_suite_dir_it = test_suite_dir.iterate();
                 while (try test_suite_dir_it.next()) |test_suite_entry| {
-                    switch (g_test_entry.kind) {
+                    switch (test_suite_entry.kind) {
                         .directory => {},
                         else => {
                             continue;

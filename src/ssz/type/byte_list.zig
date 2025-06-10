@@ -6,6 +6,7 @@ const hexByteLen = @import("hex").hexByteLen;
 const merkleize = @import("hashing").merkleize;
 const mixInLength = @import("hashing").mixInLength;
 const maxChunksToDepth = @import("hashing").maxChunksToDepth;
+const Node = @import("persistent_merkle_tree").Node;
 
 pub fn isByteListType(ST: type) bool {
     return ST.kind == .list and ST.Element.kind == .uint and ST.Element.fixed_size == 1 and ST == ByteListType(ST.limit);
@@ -86,13 +87,80 @@ pub fn ByteListType(comptime _limit: comptime_int) type {
             }
         };
 
+        pub const tree = struct {
+            pub fn length(node: Node.Id, pool: *Node.Pool) !usize {
+                const right = try node.getRight(pool);
+                const hash = right.getRoot(pool);
+                return std.mem.readInt(usize, hash[0..8], .little);
+            }
+
+            pub fn toValue(allocator: std.mem.Allocator, node: Node.Id, pool: *Node.Pool, out: *Type) !void {
+                const len = try length(node, pool);
+                const chunk_count = (len + 31) / 32;
+                if (chunk_count == 0) {
+                    try out.resize(allocator, 0);
+                    return;
+                }
+
+                const nodes = try allocator.alloc(Node.Id, chunk_count);
+                defer allocator.free(nodes);
+                try node.getNodesAtDepth(pool, chunk_depth + 1, 0, nodes);
+
+                try out.resize(allocator, len);
+                for (0..chunk_count) |i| {
+                    const start_idx = i * 32;
+                    const remaining_bytes = len - start_idx;
+
+                    // Determine how many bytes to copy for this chunk
+                    const bytes_to_copy = @min(remaining_bytes, 32);
+
+                    // Copy data if there are bytes to copy
+                    if (bytes_to_copy > 0) {
+                        @memcpy(out.items[start_idx..][0..bytes_to_copy], nodes[i].getRoot(pool)[0..bytes_to_copy]);
+                    }
+                }
+            }
+
+            pub fn fromValue(allocator: std.mem.Allocator, pool: *Node.Pool, value: *const Type) !Node.Id {
+                const chunk_count = chunkCount(value);
+                if (chunk_count == 0) {
+                    return try pool.createBranch(
+                        @enumFromInt(chunk_depth),
+                        @enumFromInt(0),
+                        false,
+                    );
+                }
+
+                const nodes = try allocator.alloc(Node.Id, chunk_count);
+                for (0..chunk_count) |i| {
+                    var leaf_buf = [_]u8{0} ** 32;
+                    const start_idx = i * 32;
+                    const remaining_bytes = value.items.len - start_idx;
+
+                    // Determine how many bytes to copy for this chunk
+                    const bytes_to_copy = @min(remaining_bytes, 32);
+
+                    // Copy data if there are bytes to copy
+                    if (bytes_to_copy > 0) {
+                        @memcpy(leaf_buf[0..bytes_to_copy], value.items[start_idx..][0..bytes_to_copy]);
+                    }
+
+                    nodes[i] = try pool.createLeaf(&leaf_buf, false);
+                }
+                return try pool.createBranch(
+                    try Node.fillWithContents(pool, nodes[0..chunk_count], chunk_depth, false),
+                    try pool.createLeafFromUint(value.items.len, false),
+                    false,
+                );
+            }
+        };
+
         pub fn deserializeFromBytes(allocator: std.mem.Allocator, data: []const u8, out: *Type) !void {
             if (data.len > limit) {
                 return error.invalidLength;
             }
 
-            try out.ensureTotalCapacityPrecise(allocator, data.len);
-            out.items.len = data.len;
+            try out.resize(allocator, data.len);
             @memcpy(out.items, data);
         }
 
@@ -107,8 +175,7 @@ pub fn ByteListType(comptime _limit: comptime_int) type {
                 return error.InvalidJson;
             }
 
-            try out.ensureTotalCapacityPrecise(allocator, hex_bytes_len);
-            out.items.len = hex_bytes_len;
+            try out.resize(allocator, hex_bytes_len);
             _ = try hexToBytes(out.items, hex_bytes);
         }
     };

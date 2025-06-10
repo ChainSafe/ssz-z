@@ -1,5 +1,6 @@
 const std = @import("std");
 const TypeKind = @import("type_kind.zig").TypeKind;
+const Node = @import("persistent_merkle_tree").Node;
 
 pub fn UintType(comptime bits: comptime_int) type {
     const NativeType = switch (bits) {
@@ -47,6 +48,33 @@ pub fn UintType(comptime bits: comptime_int) type {
             pub fn hashTreeRoot(data: []const u8, out: *[32]u8) !void {
                 @memset(out, 0);
                 @memcpy(out[0..fixed_size], data);
+            }
+        };
+
+        pub const tree = struct {
+            pub fn toValue(node: Node.Id, pool: *Node.Pool, out: *Type) !void {
+                const hash = node.getRoot(pool);
+                out.* = std.mem.readInt(Type, hash[0..bytes], .little);
+            }
+
+            pub fn fromValue(pool: *Node.Pool, value: *const Type) !Node.Id {
+                var new_leaf: [32]u8 = [_]u8{0} ** 32;
+                std.mem.writeInt(Type, new_leaf[0..bytes], value.*, .little);
+                return try pool.createLeaf(&new_leaf, false);
+            }
+
+            pub fn toValuePacked(node: Node.Id, pool: *Node.Pool, index: usize, out: *Type) !void {
+                const hash = node.getRoot(pool);
+                const offset = index * fixed_size % 32;
+                out.* = std.mem.readInt(Type, hash[offset..][0..fixed_size], .little);
+            }
+
+            pub fn fromValuePacked(node: Node.Id, pool: *Node.Pool, index: usize, value: *const Type) !void {
+                const hash = node.getRoot(pool);
+                var new_leaf: [32]u8 = hash.*;
+                const offset = index % (32 / bytes);
+                std.mem.writeInt(Type, new_leaf[offset..][0..bytes], value.*, .little);
+                return try pool.createLeaf(new_leaf, false);
             }
         };
 

@@ -1,8 +1,15 @@
 const std = @import("std");
 const TypeKind = @import("type_kind.zig").TypeKind;
+
 const isFixedType = @import("type_kind.zig").isFixedType;
+const isBasicType = @import("type_kind.zig").isBasicType;
+
 const merkleize = @import("hashing").merkleize;
 const maxChunksToDepth = @import("hashing").maxChunksToDepth;
+
+const Node = @import("persistent_merkle_tree").Node;
+const Gindex = @import("persistent_merkle_tree").Gindex;
+const Depth = @import("persistent_merkle_tree").Depth;
 
 pub fn FixedContainerType(comptime ST: type) type {
     const ssz_fields = switch (@typeInfo(ST)) {
@@ -48,7 +55,7 @@ pub fn FixedContainerType(comptime ST: type) type {
         pub const fixed_size: usize = _fixed_size;
         pub const field_offsets: [fields.len]usize = _offsets;
         pub const chunk_count: usize = fields.len;
-        pub const chunk_depth: u8 = maxChunksToDepth(chunk_count);
+        pub const chunk_depth: Depth = maxChunksToDepth(chunk_count);
 
         pub const default_value: Type = blk: {
             var out: Type = undefined;
@@ -109,6 +116,46 @@ pub fn FixedContainerType(comptime ST: type) type {
             }
         };
 
+        pub const tree = struct {
+            pub fn toValue(node: Node.Id, pool: *Node.Pool, out: *Type) !void {
+                var nodes: [chunk_count]Node.Id = undefined;
+                try node.getNodesAtDepth(pool, chunk_depth, 0, &nodes);
+                inline for (fields, 0..) |field, i| {
+                    const child_node = nodes[i];
+                    try field.type.tree.toValue(child_node, pool, &@field(out, field.name));
+                }
+            }
+
+            pub fn fromValue(pool: *Node.Pool, value: *const Type) !Node.Id {
+                var nodes: [chunk_count]Node.Id = undefined;
+                inline for (fields, 0..) |field, i| {
+                    const field_value = &@field(value, field.name);
+                    nodes[i] = try field.type.tree.fromValue(pool, field_value);
+                }
+                return try Node.fillWithContents(pool, &nodes, chunk_depth, false);
+            }
+
+            pub fn serializeIntoBytes(value: Node.Id, pool: *Node.Pool, out: []u8) !usize {
+                var i: usize = 0;
+                inline for (fields) |field| {
+                    const field_value = @field(value, field.name);
+                    i += try field.type.tree.serializeIntoBytes(field_value, pool, out[i..]);
+                }
+                return i;
+            }
+
+            pub fn deserializeFromBytes(data: []const u8, pool: *Node.Pool, out: *Node.Id) !void {
+                if (data.len != fixed_size) {
+                    return error.InvalidSize;
+                }
+                var i: usize = 0;
+                inline for (fields) |field| {
+                    try field.type.tree.deserializeFromBytes(data[i .. i + field.type.fixed_size], pool, &@field(out, field.name));
+                    i += field.type.fixed_size;
+                }
+            }
+        };
+
         pub fn deserializeFromJson(source: *std.json.Scanner, out: *Type) !void {
             // start object token "{"
             switch (try source.next()) {
@@ -137,7 +184,7 @@ pub fn FixedContainerType(comptime ST: type) type {
             }
         }
 
-        pub fn getFieldIndex(name: []const u8) usize {
+        pub fn getFieldIndex(comptime name: []const u8) usize {
             inline for (fields, 0..) |field, i| {
                 if (std.mem.eql(u8, name, field.name)) {
                     return i;
@@ -145,6 +192,11 @@ pub fn FixedContainerType(comptime ST: type) type {
             } else {
                 @compileError("field does not exist");
             }
+        }
+
+        pub fn getFieldGindex(comptime name: []const u8) Gindex {
+            const field_index = getFieldIndex(name);
+            return comptime Gindex.fromDepth(chunk_depth, field_index);
         }
     };
 }
@@ -296,14 +348,19 @@ pub fn VariableContainerType(comptime ST: type) type {
             }
         }
 
-        pub fn getFieldIndex(name: []const u8) usize {
-            for (fields, 0..) |field, i| {
+        pub fn getFieldIndex(comptime name: []const u8) usize {
+            inline for (fields, 0..) |field, i| {
                 if (std.mem.eql(u8, name, field.name)) {
                     return i;
                 }
             } else {
                 @compileError("field does not exist");
             }
+        }
+
+        pub fn getFieldGindex(comptime name: []const u8) Gindex {
+            const field_index = getFieldIndex(name);
+            return comptime Gindex.fromDepth(chunk_depth, field_index);
         }
 
         // Returns the bytes ranges of all fields, both variable and fixed size.
@@ -393,6 +450,34 @@ pub fn VariableContainerType(comptime ST: type) type {
                 }
 
                 try merkleize(@ptrCast(&chunks), chunk_depth, out);
+            }
+        };
+
+        pub const tree = struct {
+            pub fn toValue(allocator: std.mem.Allocator, node: Node.Id, pool: *Node.Pool, out: *Type) !void {
+                var nodes: [chunk_count]Node.Id = undefined;
+                try node.getNodesAtDepth(pool, chunk_depth, 0, &nodes);
+                inline for (fields, 0..) |field, i| {
+                    const child_node = nodes[i];
+                    if (comptime isFixedType(field.type)) {
+                        try field.type.tree.toValue(child_node, pool, &@field(out, field.name));
+                    } else {
+                        try field.type.tree.toValue(allocator, child_node, pool, &@field(out, field.name));
+                    }
+                }
+            }
+
+            pub fn fromValue(allocator: std.mem.Allocator, pool: *Node.Pool, value: *const Type) !Node.Id {
+                var nodes: [chunk_count]Node.Id = undefined;
+                inline for (fields, 0..) |field, i| {
+                    const field_value = &@field(value, field.name);
+                    if (comptime isFixedType(field.type)) {
+                        nodes[i] = try field.type.tree.fromValue(pool, field_value);
+                    } else {
+                        nodes[i] = try field.type.tree.fromValue(allocator, pool, field_value);
+                    }
+                }
+                return try Node.fillWithContents(pool, &nodes, chunk_depth, false);
             }
         };
 

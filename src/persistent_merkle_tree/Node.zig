@@ -583,8 +583,8 @@ pub const Id = enum(u32) {
     }
 
     /// Set multiple nodes in batch, editing and traversing nodes strictly once.
-    /// - gindexes MUST be sorted in ascending order beforehand.
-    /// - All gindexes must be at the exact same depth.
+    /// - indexes MUST be sorted in ascending order beforehand.
+    /// - All indexes must be at the exact same depth.
     /// - Depth must be > 0, if 0 just replace the root node.
     pub fn setNodesAtDepth(root_node: Id, pool: *Pool, depth: Depth, indices: []const usize, nodes: []Id) Error!Id {
         std.debug.assert(nodes.len == indices.len);
@@ -686,30 +686,124 @@ pub const Id = enum(u32) {
 
         return node_id;
     }
+    /// Set multiple nodes in batch, editing and traversing nodes strictly once.
+    /// - gindexes MUST be sorted in ascending order beforehand.
+    pub fn setNodes(root_node: Id, pool: *Pool, gindices: []const Gindex, nodes: []Id) Error!Id {
+        std.debug.assert(nodes.len == gindices.len);
+        if (gindices.len == 0) {
+            return root_node;
+        }
+
+        const base_gindex = gindices[0];
+
+        const path_len = base_gindex.pathLen();
+
+        var path_parents_buf: [max_depth]Id = undefined;
+        var path_lefts_buf: [max_depth]Id = undefined;
+        var path_rights_buf: [max_depth]Id = undefined;
+
+        // TODO how to handle failing to resize here, especially after several allocs
+        errdefer pool.free(path_parents_buf);
+
+        var node_id = root_node;
+        // The depth offset to start from, going from the current gindex to the next
+        // This is the offset of the first shared depth between the two indices
+        var d_offset: Depth = 0; // path_len - depth;
+
+        const states = pool.nodes.items(.state);
+        const lefts = pool.nodes.items(.left);
+        const rights = pool.nodes.items(.right);
+
+        // For each index specified
+        for (0..gindices.len) |i| {
+            // Calculate the gindex bits for the current index
+            const gindex = gindices[i];
+
+            try pool.alloc(path_parents_buf[d_offset..path_len]);
+
+            var path = gindex.toPath();
+
+            // Navigate down (to the depth offset), attaching any new updates
+            for (0..d_offset) |bit_i| {
+                if (path.left()) {
+                    path_lefts_buf[bit_i] = path_parents_buf[bit_i + 1];
+                } else {
+                    path_rights_buf[bit_i] = path_parents_buf[bit_i + 1];
+                }
+                path.next();
+            }
+
+            // Navigate down (from the depth offset) to the current index, populating parents
+            for (d_offset..path_len - 1) |bit_i| {
+                if (node_id.noChild(states[@intFromEnum(node_id)])) {
+                    return Error.InvalidNode;
+                }
+
+                if (path.left()) {
+                    path_lefts_buf[bit_i] = path_parents_buf[bit_i + 1];
+                    path_rights_buf[bit_i] = rights[@intFromEnum(node_id)];
+                    node_id = lefts[@intFromEnum(node_id)];
+                } else {
+                    path_lefts_buf[bit_i] = lefts[@intFromEnum(node_id)];
+                    path_rights_buf[bit_i] = path_parents_buf[bit_i + 1];
+                    node_id = rights[@intFromEnum(node_id)];
+                }
+                path.next();
+            }
+            // final layer
+            if (node_id.noChild(states[@intFromEnum(node_id)])) {
+                return Error.InvalidNode;
+            }
+            if (path.left()) {
+                path_lefts_buf[path_len - 1] = nodes[i];
+                path_rights_buf[path_len - 1] = rights[@intFromEnum(node_id)];
+            } else {
+                path_lefts_buf[path_len - 1] = lefts[@intFromEnum(node_id)];
+                path_rights_buf[path_len - 1] = nodes[i];
+            }
+
+            // Calculate the depth offset to navigate from current index to the next
+            d_offset = if (i == gindices.len - 1)
+                path_len - gindex.pathLen()
+            else
+                path_len - @as(Depth, @ctz(gindex ^ gindices[i + 1]));
+
+            // Rebind upwards depth diff times
+            try pool.rebind(
+                path_parents_buf[d_offset..path_len],
+                path_lefts_buf[d_offset..path_len],
+                path_rights_buf[d_offset..path_len],
+            );
+            node_id = path_parents_buf[d_offset];
+        }
+
+        return node_id;
+    }
 };
 
 /// Fill a view to the specified depth, returning the new root node id.
-pub fn fillToDepth(pool: *Pool, bottom: Id, depth: Depth) Error!Id {
+pub fn fillToDepth(pool: *Pool, bottom: Id, depth: Depth, should_ref: bool) Error!Id {
     var d = depth;
     var node = bottom;
     while (d > 0) : (d -= 1) {
         node = try pool.createBranch(node, node, false);
     }
 
-    // TODO should_ref ?
-    try pool.ref(node);
+    if (should_ref) {
+        try pool.ref(node);
+    }
     return node;
 }
 
 /// Fill a view to the specified length and depth, returning the new root node id.
-pub fn fillToLength(pool: *Pool, leaf: Id, depth: Depth, length: usize) Error!Id {
+pub fn fillToLength(pool: *Pool, leaf: Id, depth: Depth, length: usize, should_ref: bool) Error!Id {
     const max_length = @as(Gindex, 1) << depth;
     if (length > max_length) {
         return Error.InvalidLength;
     }
 
     // fill a full view to the specified depth
-    var node_id = try fillToDepth(pool, leaf, depth);
+    var node_id = try fillToDepth(pool, leaf, depth, should_ref);
 
     // if the requested length is the same as the max length, return the node
     if (length == max_length) {
@@ -759,17 +853,22 @@ pub fn fillToLength(pool: *Pool, leaf: Id, depth: Depth, length: usize) Error!Id
     }
 
     // and rebind with zero(0)
-    return try pool.rebind(
+    try pool.rebind(
         path_parents,
         path_lefts,
         path_rights,
     );
+
+    if (should_ref) {
+        try pool.ref(path_parents[0]);
+    }
+    return path_parents[0];
 }
 
 /// Fill a view with the specified contents, returning the new root node id.
 ///
 /// Note: contents is mutated
-pub fn fillWithContents(pool: *Pool, contents: []Id, depth: Depth) !Id {
+pub fn fillWithContents(pool: *Pool, contents: []Id, depth: Depth, should_ref: bool) !Id {
     if (contents.len == 0) {
         return @enumFromInt(depth);
     }
@@ -794,6 +893,8 @@ pub fn fillWithContents(pool: *Pool, contents: []Id, depth: Depth) !Id {
         count = (count + 1) / 2;
     }
 
-    try pool.ref(contents[0]);
+    if (should_ref) {
+        try pool.ref(contents[0]);
+    }
     return contents[0];
 }

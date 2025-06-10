@@ -57,7 +57,7 @@ pub fn main() !void {
         const valid_tests_dir = try std.fs.cwd().openDir(valid_tests_dir_name, .{ .iterate = true });
         var valid_tests_dir_it = valid_tests_dir.iterate();
         while (try valid_tests_dir_it.next()) |valid_test_entry| {
-            switch (g_test_entry.kind) {
+            switch (valid_test_entry.kind) {
                 .directory => {},
                 else => {
                     continue;
@@ -80,7 +80,7 @@ pub fn main() !void {
         const invalid_tests_dir = try std.fs.cwd().openDir(invalid_tests_dir_name, .{ .iterate = true });
         var invalid_tests_dir_it = invalid_tests_dir.iterate();
         while (try invalid_tests_dir_it.next()) |invalid_test_entry| {
-            switch (g_test_entry.kind) {
+            switch (invalid_test_entry.kind) {
                 .directory => {},
                 else => {
                     continue;

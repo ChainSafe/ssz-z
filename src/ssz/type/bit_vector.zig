@@ -4,6 +4,7 @@ const TypeKind = @import("type_kind.zig").TypeKind;
 const BoolType = @import("bool.zig").BoolType;
 const hexToBytes = @import("hex").hexToBytes;
 const maxChunksToDepth = @import("hashing").maxChunksToDepth;
+const Node = @import("persistent_merkle_tree").Node;
 
 pub fn BitVector(comptime _length: comptime_int) type {
     const byte_len = std.math.divCeil(usize, _length, 8) catch unreachable;
@@ -123,6 +124,48 @@ pub fn BitVectorType(comptime _length: comptime_int) type {
                 var chunks = [_][32]u8{[_]u8{0} ** 32} ** ((chunk_count + 1) / 2 * 2);
                 @memcpy(@as([]u8, @ptrCast(&chunks))[0..fixed_size], data);
                 try merkleize(@ptrCast(&chunks), chunk_depth, out);
+            }
+        };
+
+        pub const tree = struct {
+            pub fn toValue(node: Node.Id, pool: *Node.Pool, out: *Type) !void {
+                var nodes: [chunk_count]Node.Id = undefined;
+
+                try node.getNodesAtDepth(pool, chunk_depth, 0, &nodes);
+
+                for (0..chunk_count) |i| {
+                    const start_idx = i * 32;
+                    const remaining_bytes = byte_length - start_idx;
+
+                    // Determine how many bytes to copy for this chunk
+                    const bytes_to_copy = @min(remaining_bytes, 32);
+
+                    // Copy data if there are bytes to copy
+                    if (bytes_to_copy > 0) {
+                        @memcpy(out.data[start_idx..][0..bytes_to_copy], nodes[i].getRoot(pool)[0..bytes_to_copy]);
+                    }
+                }
+            }
+
+            pub fn fromValue(pool: *Node.Pool, value: *const Type) !Node.Id {
+                var nodes: [chunk_count]Node.Id = undefined;
+                for (0..chunk_count) |i| {
+                    var leaf_buf = [_]u8{0} ** 32;
+                    const start_idx = i * 32;
+                    const remaining_bytes = byte_length - start_idx;
+
+                    // Determine how many bytes to copy for this chunk
+                    const bytes_to_copy = @min(remaining_bytes, 32);
+
+                    // Copy data if there are bytes to copy
+                    if (bytes_to_copy > 0) {
+                        @memcpy(leaf_buf[0..bytes_to_copy], value.data[start_idx..][0..bytes_to_copy]);
+                    }
+
+                    nodes[i] = try pool.createLeaf(&leaf_buf, false);
+                }
+
+                return try Node.fillWithContents(pool, &nodes, chunk_depth, false);
             }
         };
 

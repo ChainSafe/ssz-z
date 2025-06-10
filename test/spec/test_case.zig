@@ -5,6 +5,7 @@ const types = @import("generic_types.zig");
 const snappy = @import("snappy");
 const hex = @import("hex");
 const ssz = @import("ssz");
+const Node = @import("persistent_merkle_tree").Node;
 
 const Allocator = std.mem.Allocator;
 
@@ -29,12 +30,12 @@ pub fn parseYaml(comptime ST: type, allocator: Allocator, y: yaml.Yaml, out: *ST
         data[data.len - 1] ^= @as(u8, 1) << last_1_index;
 
         var bl = ST.default_value;
-        try bl.setBitLen(allocator, bit_len);
+        try bl.resize(allocator, bit_len);
         if (bit_len > 0) {
             if (bit_len % 8 == 0) {
-                bl.data = std.ArrayListUnmanaged(u8).fromOwnedSlice(data[0 .. data.len - 1]);
+                @memcpy(bl.data.items[0 .. data.len - 1], data[0 .. data.len - 1]);
             } else {
-                bl.data = std.ArrayListUnmanaged(u8).fromOwnedSlice(data);
+                @memcpy(bl.data.items[0..data.len], data);
             }
         }
 
@@ -52,15 +53,20 @@ pub fn parseYaml(comptime ST: type, allocator: Allocator, y: yaml.Yaml, out: *ST
             const hex_bytes = try y.parse(allocator, []u8);
             const bytes_buf = try allocator.alloc(u8, (hex_bytes.len - 2) / 2);
             const bytes = try hex.hexToBytes(bytes_buf, hex_bytes);
-            out.* = ST.Type.fromOwnedSlice(bytes);
+            out.* = ST.Type.empty;
+            try out.resize(allocator, bytes.len);
+            @memcpy(out.items, bytes);
             return;
         } else if (comptime ssz.isBasicType(ST.Element)) {
-            out.* = ST.Type.fromOwnedSlice(try y.parse(allocator, []ST.Element.Type));
+            const items = try y.parse(allocator, []ST.Element.Type);
+            out.* = ST.Type.empty;
+            try out.resize(allocator, items.len);
+            @memcpy(out.items, items);
             return;
         } else {
             const list = try y.docs.items[0].asList();
-            var l = try ST.Type.initCapacity(allocator, list.len);
-            l.expandToCapacity();
+            var l = ST.Type.empty;
+            try l.resize(allocator, list.len);
             for (list, 0..) |v, i| {
                 y.docs.items[0] = v;
                 try parseYaml(ST.Element, allocator, y, &l.items[i]);
@@ -184,6 +190,28 @@ pub fn validTestCase(comptime ST: type, gpa: Allocator, path: std.fs.Dir, meta_f
     var root_actual: [32]u8 = undefined;
     try Hasher.hash(&hash_scratch, value_expected, &root_actual);
     try std.testing.expectEqualSlices(u8, &root_expected, &root_actual);
+
+    // test conversion between tree and value
+
+    var pool = try Node.Pool.init(gpa, 1_000_000);
+    defer pool.deinit();
+
+    const node = if (comptime ssz.isFixedType(ST))
+        try ST.tree.fromValue(&pool, value_expected)
+    else
+        try ST.tree.fromValue(allocator, &pool, value_expected);
+
+    try std.testing.expectEqualSlices(u8, &root_expected, node.getRoot(&pool));
+
+    const value_from_tree = try allocator.create(ST.Type);
+    value_from_tree.* = ST.default_value;
+
+    if (comptime ssz.isFixedType(ST)) {
+        try ST.tree.toValue(node, &pool, value_from_tree);
+    } else {
+        try ST.tree.toValue(allocator, node, &pool, value_from_tree);
+    }
+    try std.testing.expectEqualDeep(value_expected, value_from_tree);
 }
 
 pub fn invalidTestCase(comptime ST: type, gpa: Allocator, path: std.fs.Dir) !void {

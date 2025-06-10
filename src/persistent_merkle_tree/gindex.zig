@@ -94,6 +94,14 @@ pub const Gindex = enum(GindexUint) {
             path.* = @enumFromInt(@intFromEnum(path.*) >> n);
         }
     };
+
+    pub fn sortAsc(items: []Gindex) void {
+        std.sort.pdq(Gindex, items, {}, struct {
+            pub fn lessThan(a: Gindex, b: Gindex) bool {
+                return @intFromEnum(a) < @intFromEnum(b);
+            }
+        }.lessThan);
+    }
 };
 
 test {

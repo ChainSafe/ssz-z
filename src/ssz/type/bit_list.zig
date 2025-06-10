@@ -6,6 +6,7 @@ const hexByteLen = @import("hex").hexByteLen;
 const merkleize = @import("hashing").merkleize;
 const mixInLength = @import("hashing").mixInLength;
 const maxChunksToDepth = @import("hashing").maxChunksToDepth;
+const Node = @import("persistent_merkle_tree").Node;
 
 pub fn BitList(comptime limit: comptime_int) type {
     return struct {
@@ -58,20 +59,19 @@ pub fn BitList(comptime limit: comptime_int) type {
 
         pub fn set(self: *@This(), allocator: std.mem.Allocator, bit_index: usize, bit: bool) !void {
             if (bit_index + 1 > self.bit_len) {
-                try self.setBitLen(allocator, bit_index + 1);
+                try self.resize(allocator, bit_index + 1);
             }
             try self.setAssumeCapacity(bit_index, bit);
         }
 
-        pub fn setBitLen(self: *@This(), allocator: std.mem.Allocator, bit_len: usize) !void {
+        pub fn resize(self: *@This(), allocator: std.mem.Allocator, bit_len: usize) !void {
             if (bit_len > limit) {
                 return error.tooLarge;
             }
 
             const old_byte_len = std.math.divCeil(usize, self.bit_len, 8) catch unreachable;
             const byte_len = std.math.divCeil(usize, bit_len, 8) catch unreachable;
-            try self.data.ensureTotalCapacityPrecise(allocator, byte_len);
-            self.data.items.len = byte_len;
+            try self.data.resize(allocator, byte_len);
             self.bit_len = bit_len;
             // zero out additionally allocated bytes
             if (old_byte_len < byte_len) {
@@ -190,7 +190,7 @@ pub fn BitListType(comptime _limit: comptime_int) type {
                 return error.tooLarge;
             }
 
-            try out.setBitLen(allocator, bit_len);
+            try out.resize(allocator, bit_len);
             if (bit_len == 0) {
                 return;
             }
@@ -276,6 +276,79 @@ pub fn BitListType(comptime _limit: comptime_int) type {
 
                 try merkleize(@ptrCast(chunks), chunk_depth, out);
                 mixInLength(bit_len, out);
+            }
+        };
+
+        pub const tree = struct {
+            pub fn length(node: Node.Id, pool: *Node.Pool) !usize {
+                const right = try node.getRight(pool);
+                const hash = right.getRoot(pool);
+                return std.mem.readInt(usize, hash[0..8], .little);
+            }
+
+            pub fn toValue(allocator: std.mem.Allocator, node: Node.Id, pool: *Node.Pool, out: *Type) !void {
+                const bit_len = try length(node, pool);
+                const chunk_count = (bit_len + 255) / 256;
+                if (chunk_count == 0) {
+                    try out.resize(allocator, 0);
+                    return;
+                }
+
+                const byte_length = (bit_len + 7) / 8;
+
+                const nodes = try allocator.alloc(Node.Id, chunk_count);
+                defer allocator.free(nodes);
+
+                try node.getNodesAtDepth(pool, chunk_depth + 1, 0, nodes);
+
+                try out.resize(allocator, bit_len);
+                for (0..chunk_count) |i| {
+                    const start_idx = i * 32;
+                    const remaining_bytes = byte_length - start_idx;
+
+                    // Determine how many bytes to copy for this chunk
+                    const bytes_to_copy = @min(remaining_bytes, 32);
+
+                    // Copy data if there are bytes to copy
+                    if (bytes_to_copy > 0) {
+                        @memcpy(out.data.items[start_idx..][0..bytes_to_copy], nodes[i].getRoot(pool)[0..bytes_to_copy]);
+                    }
+                }
+            }
+
+            pub fn fromValue(allocator: std.mem.Allocator, pool: *Node.Pool, value: *const Type) !Node.Id {
+                const chunk_count = chunkCount(value);
+                if (chunk_count == 0) {
+                    return try pool.createBranch(
+                        @enumFromInt(chunk_depth),
+                        @enumFromInt(0),
+                        false,
+                    );
+                }
+                const byte_length = (value.bit_len + 7) / 8;
+
+                const nodes = try allocator.alloc(Node.Id, chunk_count);
+                defer allocator.free(nodes);
+                for (0..chunk_count) |i| {
+                    var leaf_buf = [_]u8{0} ** 32;
+                    const start_idx = i * 32;
+                    const remaining_bytes = byte_length - start_idx;
+
+                    // Determine how many bytes to copy for this chunk
+                    const bytes_to_copy = @min(remaining_bytes, 32);
+
+                    // Copy data if there are bytes to copy
+                    if (bytes_to_copy > 0) {
+                        @memcpy(leaf_buf[0..bytes_to_copy], value.data.items[start_idx..][0..bytes_to_copy]);
+                    }
+
+                    nodes[i] = try pool.createLeaf(&leaf_buf, false);
+                }
+                return try pool.createBranch(
+                    try Node.fillWithContents(pool, nodes, chunk_depth, false),
+                    try pool.createLeafFromUint(value.bit_len, false),
+                    false,
+                );
             }
         };
 

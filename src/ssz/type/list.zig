@@ -6,6 +6,7 @@ const OffsetIterator = @import("offsets.zig").OffsetIterator;
 const merkleize = @import("hashing").merkleize;
 const mixInLength = @import("hashing").mixInLength;
 const maxChunksToDepth = @import("hashing").maxChunksToDepth;
+const Node = @import("persistent_merkle_tree").Node;
 
 pub fn FixedListType(comptime ST: type, comptime _limit: comptime_int) type {
     comptime {
@@ -73,8 +74,7 @@ pub fn FixedListType(comptime ST: type, comptime _limit: comptime_int) type {
                 return error.gtLimit;
             }
 
-            try out.ensureTotalCapacityPrecise(allocator, len);
-            out.items.len = len;
+            try out.resize(allocator, len);
             @memset(out.items[0..len], Element.default_value);
             for (0..len) |i| {
                 try Element.deserializeFromBytes(
@@ -150,6 +150,100 @@ pub fn FixedListType(comptime ST: type, comptime _limit: comptime_int) type {
                 }
                 try merkleize(@ptrCast(chunks), chunk_depth, out);
                 mixInLength(len, out);
+            }
+        };
+
+        pub const tree = struct {
+            pub fn length(node: Node.Id, pool: *Node.Pool) !usize {
+                const right = try node.getRight(pool);
+                const hash = right.getRoot(pool);
+                return std.mem.readInt(usize, hash[0..8], .little);
+            }
+
+            pub fn toValue(allocator: std.mem.Allocator, node: Node.Id, pool: *Node.Pool, out: *Type) !void {
+                const len = try length(node, pool);
+                const chunk_count = if (comptime isBasicType(Element))
+                    (Element.fixed_size * len + 31) / 32
+                else
+                    len;
+
+                if (chunk_count == 0) {
+                    try out.resize(allocator, 0);
+                    return;
+                }
+
+                const nodes = try allocator.alloc(Node.Id, chunk_count);
+                defer allocator.free(nodes);
+
+                try node.getNodesAtDepth(pool, chunk_depth + 1, 0, nodes);
+
+                try out.resize(allocator, len);
+                @memset(out.items, Element.default_value);
+                if (comptime isBasicType(Element)) {
+                    // tightly packed list
+                    for (0..len) |i| {
+                        try Element.tree.toValuePacked(
+                            nodes[i * Element.fixed_size / 32],
+                            pool,
+                            i,
+                            &out.items[i],
+                        );
+                    }
+                } else {
+                    for (0..len) |i| {
+                        try Element.tree.toValue(
+                            nodes[i],
+                            pool,
+                            &out.items[i],
+                        );
+                    }
+                }
+            }
+
+            pub fn fromValue(allocator: std.mem.Allocator, pool: *Node.Pool, value: *const Type) !Node.Id {
+                const len = value.items.len;
+                const chunk_count = chunkCount(value);
+                if (chunk_count == 0) {
+                    return try pool.createBranch(
+                        @enumFromInt(chunk_depth),
+                        @enumFromInt(0),
+                        false,
+                    );
+                }
+
+                const nodes = try allocator.alloc(Node.Id, chunk_count);
+                defer allocator.free(nodes);
+                if (comptime isBasicType(Element)) {
+                    const items_per_chunk = 32 / Element.fixed_size;
+                    var next: usize = 0; // index in value.items
+
+                    for (0..chunk_count) |i| {
+                        var leaf_buf = [_]u8{0} ** 32;
+
+                        // how many items still remain to be packed into this chunk?
+                        const remaining = len - next;
+                        const to_write = @min(remaining, items_per_chunk);
+
+                        // serialise exactly to_write elements into the 32‑byte buffer
+                        for (0..to_write) |j| {
+                            const dst_off = j * Element.fixed_size;
+                            const dst_slice = leaf_buf[dst_off .. dst_off + Element.fixed_size];
+                            _ = Element.serializeIntoBytes(&value.items[next + j], dst_slice);
+                        }
+                        next += to_write;
+
+                        nodes[i] = try pool.createLeaf(&leaf_buf, false);
+                    }
+                } else {
+                    for (0..chunk_count) |i| {
+                        nodes[i] = try Element.tree.fromValue(pool, &value.items[i]);
+                    }
+                }
+                return try pool.createBranch(
+                    try Node.fillWithContents(pool, nodes, chunk_depth, false),
+                    try pool.createLeafFromUint(len, false),
+                    false,
+                );
             }
         };
     };
@@ -228,8 +322,7 @@ pub fn VariableListType(comptime ST: type, comptime _limit: comptime_int) type {
 
             const len = offsets.len - 1;
 
-            try out.ensureTotalCapacityPrecise(allocator, len);
-            out.items.len = len;
+            try out.resize(allocator, len);
             @memset(out.items[0..len], Element.default_value);
             for (0..len) |i| {
                 try Element.deserializeFromBytes(
@@ -302,6 +395,62 @@ pub fn VariableListType(comptime ST: type, comptime _limit: comptime_int) type {
                 }
                 try merkleize(@ptrCast(chunks), chunk_depth, out);
                 mixInLength(len, out);
+            }
+        };
+
+        pub const tree = struct {
+            pub fn length(node: Node.Id, pool: *Node.Pool) !usize {
+                const right = try node.getRight(pool);
+                const hash = right.getRoot(pool);
+                return std.mem.readInt(usize, hash[0..8], .little);
+            }
+
+            pub fn toValue(allocator: std.mem.Allocator, node: Node.Id, pool: *Node.Pool, out: *Type) !void {
+                const len = try length(node, pool);
+                const chunk_count = len;
+                if (chunk_count == 0) {
+                    try out.resize(allocator, 0);
+                    return;
+                }
+
+                const nodes = try allocator.alloc(Node.Id, chunk_count);
+                defer allocator.free(nodes);
+
+                try node.getNodesAtDepth(pool, chunk_depth + 1, 0, nodes);
+
+                try out.resize(allocator, len);
+                @memset(out.items, Element.default_value);
+                for (0..len) |i| {
+                    try Element.tree.toValue(
+                        allocator,
+                        nodes[i],
+                        pool,
+                        &out.items[i],
+                    );
+                }
+            }
+
+            pub fn fromValue(allocator: std.mem.Allocator, pool: *Node.Pool, value: *const Type) !Node.Id {
+                const len = value.items.len;
+                const chunk_count = len;
+                if (chunk_count == 0) {
+                    return try pool.createBranch(
+                        @enumFromInt(chunk_depth),
+                        @enumFromInt(0),
+                        false,
+                    );
+                }
+
+                const nodes = try allocator.alloc(Node.Id, chunk_count);
+                defer allocator.free(nodes);
+                for (0..chunk_count) |i| {
+                    nodes[i] = try Element.tree.fromValue(allocator, pool, &value.items[i]);
+                }
+                return try pool.createBranch(
+                    try Node.fillWithContents(pool, nodes, chunk_depth, false),
+                    try pool.createLeafFromUint(len, false),
+                    false,
+                );
             }
         };
 
