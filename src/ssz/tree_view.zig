@@ -2,7 +2,8 @@ const std = @import("std");
 const Depth = @import("hashing").Depth;
 const Node = @import("persistent_merkle_tree").Node;
 const Gindex = @import("persistent_merkle_tree").Gindex;
-const isBasicType = @import("type_kind.zig").isBasicType;
+const isBasicType = @import("type/type_kind.zig").isBasicType;
+const progressive = @import("type/progressive.zig");
 
 pub fn TreeView(comptime ST: type) type {
     comptime {
@@ -125,13 +126,21 @@ pub fn TreeView(comptime ST: type) type {
             if (ST.kind != .vector and ST.kind != .list) {
                 @compileError("getElement can only be used with vector or list types");
             }
-            const child_gindex = Gindex.fromDepth(ST.chunk_depth, index);
             if (comptime isBasicType(ST.Element)) {
                 var value: ST.Element.Type = undefined;
+                const child_chunk_index = ST.Element.fixed_size * index / 32;
+                const child_gindex = if (ST.kind == .progressive_list)
+                    progressive.chunkGindex(child_chunk_index)
+                else
+                    Gindex.fromDepth(ST.chunk_depth, child_chunk_index);
                 const child_node = try self.getChildNode(child_gindex);
-                try ST.Element.tree.toValue(child_node, self.pool, &value);
+                try ST.Element.tree.toValuePacked(child_node, self.pool, index, &value);
                 return value;
             } else {
+                const child_gindex = if (ST.kind == .progressive_list)
+                    progressive.chunkGindex(index)
+                else
+                    Gindex.fromDepth(ST.chunk_depth, index);
                 const child_data = try self.getChildData(child_gindex);
 
                 // TODO only update changed if the subview is mutable
@@ -149,9 +158,13 @@ pub fn TreeView(comptime ST: type) type {
             if (ST.kind != .vector and ST.kind != .list) {
                 @compileError("setElement can only be used with vector or list types");
             }
-            const child_gindex = Gindex.fromDepth(ST.chunk_depth, index);
-            try self.data.changed.put(child_gindex, void);
             if (comptime isBasicType(ST.Element)) {
+                const child_chunk_index = ST.Element.fixed_size * index / 32;
+                const child_gindex = if (ST.kind == .progressive_list)
+                    progressive.chunkGindex(child_chunk_index)
+                else
+                    Gindex.fromDepth(ST.chunk_depth, child_chunk_index);
+                try self.data.changed.put(child_gindex, void);
                 const child_node = try self.getChildNode(child_gindex);
                 try self.data.children_nodes.put(
                     child_gindex,
@@ -163,6 +176,11 @@ pub fn TreeView(comptime ST: type) type {
                     ),
                 );
             } else {
+                const child_gindex = if (ST.kind == .progressive_list)
+                    progressive.chunkGindex(index)
+                else
+                    Gindex.fromDepth(ST.chunk_depth, index);
+                try self.data.changed.put(child_gindex, void);
                 try self.data.children_data.put(
                     child_gindex,
                     value.data,

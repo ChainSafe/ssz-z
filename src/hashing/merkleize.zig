@@ -44,6 +44,10 @@ pub fn mixInLength(len: u256, out: *[32]u8) void {
     hashOne(out, out, &tmp);
 }
 
+pub fn mixInAux(aux: *const [32]u8, out: *[32]u8) void {
+    hashOne(out, out, aux);
+}
+
 const rootToHex = @import("hex").rootToHex;
 test "merkleize" {
     const TestCase = struct {

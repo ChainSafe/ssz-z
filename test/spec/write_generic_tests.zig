@@ -77,7 +77,8 @@ pub fn main() !void {
         });
         defer allocator.free(invalid_tests_dir_name);
 
-        const invalid_tests_dir = try std.fs.cwd().openDir(invalid_tests_dir_name, .{ .iterate = true });
+        const invalid_tests_dir = std.fs.cwd().openDir(invalid_tests_dir_name, .{ .iterate = true }) catch
+            continue;
         var invalid_tests_dir_it = invalid_tests_dir.iterate();
         while (try invalid_tests_dir_it.next()) |invalid_test_entry| {
             switch (invalid_test_entry.kind) {

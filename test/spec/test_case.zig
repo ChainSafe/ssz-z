@@ -48,7 +48,7 @@ pub fn parseYaml(comptime ST: type, allocator: Allocator, y: yaml.Yaml, out: *ST
             try parseYaml(field.type, allocator, y, &@field(out, field.name));
         }
         return;
-    } else if (ST.kind == .list) {
+    } else if (ST.kind == .list or ST.kind == .progressive_list) {
         if (comptime ssz.isByteListType(ST)) {
             const hex_bytes = try y.parse(allocator, []u8);
             const bytes_buf = try allocator.alloc(u8, (hex_bytes.len - 2) / 2);
@@ -58,6 +58,7 @@ pub fn parseYaml(comptime ST: type, allocator: Allocator, y: yaml.Yaml, out: *ST
             @memcpy(out.items, bytes);
             return;
         } else if (comptime ssz.isBasicType(ST.Element)) {
+            std.debug.print("zzz {s}", .{y.source});
             const items = try y.parse(allocator, []ST.Element.Type);
             out.* = ST.Type.empty;
             try out.resize(allocator, items.len);

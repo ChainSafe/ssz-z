@@ -148,3 +148,12 @@ pub const uint_32 = ssz.UintType(32);
 pub const uint_64 = ssz.UintType(64);
 pub const uint_128 = ssz.UintType(128);
 pub const uint_256 = ssz.UintType(256);
+
+// basic progressive lists
+pub const proglist_bool = ssz.FixedProgressiveListType(boolean);
+pub const proglist_uint8 = ssz.FixedProgressiveListType(uint_8);
+pub const proglist_uint16 = ssz.FixedProgressiveListType(uint_16);
+pub const proglist_uint32 = ssz.FixedProgressiveListType(uint_32);
+pub const proglist_uint64 = ssz.FixedProgressiveListType(uint_64);
+pub const proglist_uint128 = ssz.FixedProgressiveListType(uint_128);
+pub const proglist_uint256 = ssz.FixedProgressiveListType(uint_256);

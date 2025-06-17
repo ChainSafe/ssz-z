@@ -49,7 +49,7 @@ pub fn getOffsetFromPath(comptime path: []const PathItem) usize {
                     .container => {
                         offset += path_item.ST.field_offsets[comptime path_item.ST.getFieldIndex(child.index)];
                     },
-                    .vector, .list => {
+                    .vector, .list, .progressive_list => {
                         if (!comptime isFixedType(path_item.ST.Element)) {
                             @compileError("Cannot get an offset for variable-length array elements");
                         }
@@ -95,7 +95,7 @@ fn VariableSerialized(comptime ST: type) type {
                 switch (item.item_type) {
                     .child => |child| {
                         switch (item.ST.kind) {
-                            .vector, .list => {
+                            .vector, .list, .progressive_list => {
                                 if (item.ST.kind == .list and item.ST.Element.kind == .bool) {
                                     return error.InvalidType;
                                 }

@@ -3,6 +3,7 @@ const std = @import("std");
 const isBasicType = @import("type/type_kind.zig").isBasicType;
 const isBitListType = @import("type/bit_list.zig").isBitListType;
 const h = @import("hashing");
+const progressive = @import("type/progressive.zig");
 
 pub fn Hasher(comptime ST: type) type {
     return struct {
@@ -32,7 +33,7 @@ pub fn Hasher(comptime ST: type) type {
                     }
                     return try HasherData.initCapacity(allocator, hasher_size, children);
                 },
-                .list => {
+                .list, .progressive_list => {
                     // we don't preallocate here since we need the length
                     const hasher_size = 0;
                     if (comptime isBasicType(ST.Element)) {
@@ -83,6 +84,20 @@ pub fn Hasher(comptime ST: type) type {
                         } else {
                             h.mixInLength(value.items.len, out);
                         }
+                    },
+                    .progressive_list => {
+                        const chunk_count = ST.chunkCount(value);
+                        try scratch.chunks.resize(chunk_count);
+                        @memset(scratch.chunks.items, [_]u8{0} ** 32);
+                        if (comptime isBasicType(ST.Element)) {
+                            _ = ST.serializeIntoBytes(value, @ptrCast(scratch.chunks.items));
+                        } else {
+                            for (value.items, 0..) |element, i| {
+                                try Hasher(ST.Element).hash(&scratch.children.?[0], &element, &scratch.chunks.items[i]);
+                            }
+                        }
+                        try progressive.merkleizeChunks(scratch.chunks.allocator, scratch.chunks.items, out);
+                        h.mixInLength(value.items.len, out);
                     },
                     .vector => {
                         @memset(scratch.chunks.items, [_]u8{0} ** 32);
