@@ -34,24 +34,24 @@ pub const Data = struct {
     }
 
     pub fn commit(self: *Data, allocator: std.mem.Allocator, pool: *Node.Pool) !void {
-        const nodes = try self.allocator.alloc(Node.Id, self.data.changed.count());
-        defer self.allocator.free(nodes);
+        const nodes = try allocator.alloc(Node.Id, self.changed.count());
+        defer allocator.free(nodes);
 
-        const gindices = self.data.changed.keys();
+        const gindices = self.changed.keys();
         Gindex.sortAsc(gindices);
 
         for (gindices, 0..) |gindex, i| {
-            if (self.data.children_data.get(gindex)) |child_data| {
-                try child_data.commit(allocator);
+            if (self.children_data.getPtr(gindex)) |child_data| {
+                try child_data.commit(allocator, pool);
                 nodes[i] = child_data.root;
-            } else if (self.data.children_nodes.get(gindex)) |child_node| {
+            } else if (self.children_nodes.get(gindex)) |child_node| {
                 nodes[i] = child_node;
             } else {
                 return error.ChildNotFound;
             }
         }
 
-        const new_root = try self.data.root.setNodes(self.pool, gindices, nodes);
+        const new_root = try self.root.setNodes(pool, gindices, nodes);
         try pool.ref(new_root);
         pool.unref(self.root);
         self.root = new_root;

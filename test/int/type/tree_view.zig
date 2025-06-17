@@ -43,4 +43,23 @@ test "TreeView" {
     root_view = try view.getField("root");
     try RootView.SszType.tree.toValue(root_view.data.root, &pool, root[0..]);
     try std.testing.expectEqualSlices(u8, ([_]u8{2} ** 32)[0..], root[0..]);
+
+    // commit and check hash_tree_root
+    // TODO: fix setNodes() api
+    // try view.commit();
+    // var htr_from_value: [32]u8 = undefined;
+    // const expected_checkpoint: Checkpoint.Type = .{
+    //     .epoch = 100,
+    //     .root = [_]u8{2} ** 32,
+    // };
+    // try Checkpoint.hashTreeRoot(&expected_checkpoint, &htr_from_value);
+
+    // var htr_from_tree: [32]u8 = undefined;
+    // try view.hashTreeRoot(&htr_from_tree);
+
+    // try std.testing.expectEqualSlices(
+    //     u8,
+    //     &htr_from_value,
+    //     &htr_from_tree,
+    // );
 }
