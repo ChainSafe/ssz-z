@@ -18,6 +18,8 @@ jobs:
 
       - name: Setup Zig
         uses: mlugg/setup-zig@v1
+        with:
+          version: "0.14.0"
 
       - name: Unit tests
         run: |
@@ -35,6 +37,8 @@ jobs:
 
       - name: Setup Zig
         uses: mlugg/setup-zig@v1
+        with:
+          version: "0.14.0"
 
       - name: Cache spec tests
         id: spec-tests
@@ -46,7 +50,7 @@ jobs:
       - name: Download spec tests
         run: |
           zig build run:download_spec_tests
-      
+
       - name: Write generic spec tests
         run: |
           zig build run:write_generic_spec_tests
@@ -54,15 +58,15 @@ jobs:
       - name: Write static spec tests
         run: |
           zig build run:write_static_spec_tests
-      
+
       - name: Run generic spec tests
         run: |
           zig build test:generic_spec_tests
-      
+
       - name: Run minimal static spec tests
         run: |
           zig build test:static_spec_tests -Dpreset=minimal
-      
+
       - name: Run mainnet static spec tests
         run: |
           zig build test:static_spec_tests -Dpreset=mainnet
