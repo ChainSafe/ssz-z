@@ -60,6 +60,8 @@ pub const Eth1Data = ssz.FixedContainerType(struct {
 
 pub const Eth1DataVotes = ssz.FixedListType(Eth1Data, preset.EPOCHS_PER_ETH1_VOTING_PERIOD * preset.SLOTS_PER_EPOCH);
 
+pub const JustificationBits = ssz.BitVectorType(c.JUSTIFICATION_BITS_LENGTH);
+
 pub const HistoricalBatch = ssz.FixedContainerType(struct {
     block_roots: ssz.FixedVectorType(p.Root, preset.SLOTS_PER_HISTORICAL_ROOT),
     state_roots: ssz.FixedVectorType(p.Root, preset.SLOTS_PER_HISTORICAL_ROOT),
@@ -159,7 +161,7 @@ pub const BeaconState = ssz.VariableContainerType(struct {
     slashings: ssz.FixedVectorType(p.Gwei, preset.EPOCHS_PER_SLASHINGS_VECTOR),
     previous_epoch_attestations: ssz.VariableListType(PendingAttestation, preset.MAX_ATTESTATIONS * preset.SLOTS_PER_EPOCH),
     current_epoch_attestations: ssz.VariableListType(PendingAttestation, preset.MAX_ATTESTATIONS * preset.SLOTS_PER_EPOCH),
-    justification_bits: ssz.BitVectorType(c.JUSTIFICATION_BITS_LENGTH),
+    justification_bits: JustificationBits,
     previous_justified_checkpoint: Checkpoint,
     current_justified_checkpoint: Checkpoint,
     finalized_checkpoint: Checkpoint,
