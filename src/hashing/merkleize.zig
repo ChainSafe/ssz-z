@@ -4,27 +4,42 @@ const hash = @import("sha256.zig").hash;
 const hashOne = @import("sha256.zig").hashOne;
 const Depth = @import("depth.zig").Depth;
 
-pub fn merkleize(chunk_pairs: [][2][32]u8, chunk_depth: Depth, out: *[32]u8) !void {
-    if (chunk_pairs.len == 0) {
+/// Note: chunks is mutated to store hash layers
+pub fn merkleize(chunks: [][32]u8, chunk_depth: Depth, out: *[32]u8) !void {
+    if (chunks.len == 0) {
         @memcpy(out, zh.getZeroHash(chunk_depth));
         return;
     }
 
     // hash into the same buffer
-    var chunks: [][32]u8 = @ptrCast(chunk_pairs);
-    for (0..chunk_depth) |i| {
-        if (chunks.len % 2 == 1) {
-            chunks.len += 1;
-            @memcpy(&chunks[chunks.len - 1], zh.getZeroHash(@intCast(i)));
+    var c: [][32]u8 = chunks;
+    var start: usize = 0;
+
+    // Because the nice loop below operates on an even number of chunks
+    // by expanding the c.len in the odd case,
+    // we special case if the first layer of chunks is odd (and c.len can't be expanded)
+    if (chunks.len % 2 == 1 and chunk_depth > 0) {
+        start = 1;
+        if (chunks.len > 1) {
+            try hash(c[0 .. c.len / 2], c[0 .. c.len - 1]);
         }
-
-        const buf_out = chunks[0 .. chunks.len / 2];
-        try hash(buf_out, chunks);
-
-        chunks = buf_out;
+        hashOne(&c[c.len / 2], &c[c.len - 1], zh.getZeroHash(0));
+        c = c[0 .. c.len / 2 + 1];
     }
 
-    @memcpy(out, &chunks[0]);
+    for (start..chunk_depth) |i| {
+        if (c.len % 2 == 1) {
+            c.len += 1;
+            @memcpy(&c[c.len - 1], zh.getZeroHash(@intCast(i)));
+        }
+
+        const buf_out = c[0 .. c.len / 2];
+        try hash(buf_out, c);
+
+        c = buf_out;
+    }
+
+    @memcpy(out, &c[0]);
 }
 
 /// Given maxChunkCount return the chunkDepth
@@ -69,11 +84,10 @@ test "merkleize" {
     };
 
     inline for (test_cases) |tc| {
-        const chunk_count = if (tc.chunk_count % 2 == 1) tc.chunk_count + 1 else tc.chunk_count;
         const chunk_depth = maxChunksToDepth(tc.chunk_count);
 
         const expected = tc.expected;
-        var chunks = [_][32]u8{[_]u8{0} ** 32} ** chunk_count;
+        var chunks = [_][32]u8{[_]u8{0} ** 32} ** tc.chunk_count;
         for (&chunks, 0..) |*chunk, i| {
             if (i >= tc.chunk_count) break;
             for (chunk) |*b| {
@@ -82,7 +96,7 @@ test "merkleize" {
         }
 
         var output: [32]u8 = undefined;
-        try merkleize(@ptrCast(&chunks), chunk_depth, &output);
+        try merkleize(&chunks, chunk_depth, &output);
         const hex = try rootToHex(&output);
         try std.testing.expectEqualSlices(u8, expected, &hex);
     }
