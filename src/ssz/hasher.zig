@@ -12,17 +12,15 @@ pub fn Hasher(comptime ST: type) type {
         pub fn init(allocator: std.mem.Allocator) !HasherData {
             switch (ST.kind) {
                 .vector => {
-                    const hasher_size = if (ST.chunk_count % 2 == 1) ST.chunk_count + 1 else ST.chunk_count;
                     if (comptime isBasicType(ST.Element)) {
-                        return try HasherData.initCapacity(allocator, hasher_size, null);
+                        return try HasherData.initCapacity(allocator, ST.chunk_count, null);
                     } else {
                         var children = try allocator.alloc(HasherData, 1);
                         children[0] = try Hasher(ST.Element).init(allocator);
-                        return try HasherData.initCapacity(allocator, hasher_size, children);
+                        return try HasherData.initCapacity(allocator, ST.chunk_count, children);
                     }
                 },
                 .container => {
-                    const hasher_size = if (ST.chunk_count % 2 == 1) ST.chunk_count + 1 else ST.chunk_count;
                     var children = try allocator.alloc(HasherData, ST.fields.len);
                     inline for (ST.fields, 0..) |field, i| {
                         if (comptime isBasicType(field.type)) {
@@ -31,7 +29,7 @@ pub fn Hasher(comptime ST: type) type {
                             children[i] = try Hasher(field.type).init(allocator);
                         }
                     }
-                    return try HasherData.initCapacity(allocator, hasher_size, children);
+                    return try HasherData.initCapacity(allocator, ST.chunk_count, children);
                 },
                 .list, .progressive_list => {
                     // we don't preallocate here since we need the length
@@ -64,9 +62,8 @@ pub fn Hasher(comptime ST: type) type {
                 switch (ST.kind) {
                     .list => {
                         const chunk_count = ST.chunkCount(value);
-                        const hasher_size = if (chunk_count % 2 == 1) chunk_count + 1 else chunk_count;
-                        try scratch.chunks.ensureTotalCapacity(hasher_size);
-                        scratch.chunks.items.len = hasher_size;
+                        try scratch.chunks.ensureTotalCapacity(chunk_count);
+                        scratch.chunks.items.len = chunk_count;
                         @memset(scratch.chunks.items, [_]u8{0} ** 32);
                         if (comptime isBitListType(ST)) {
                             const scratch_bytes: []u8 = @ptrCast(scratch.chunks.items[0..chunk_count]);
@@ -78,7 +75,7 @@ pub fn Hasher(comptime ST: type) type {
                                 try Hasher(ST.Element).hash(&scratch.children.?[0], &element, &scratch.chunks.items[i]);
                             }
                         }
-                        try h.merkleize(@ptrCast(scratch.chunks.items), ST.chunk_depth, out);
+                        try h.merkleize(scratch.chunks.items, ST.chunk_depth, out);
                         if (ST.Element.kind == .bool) {
                             h.mixInLength(value.bit_len, out);
                         } else {
@@ -108,7 +105,7 @@ pub fn Hasher(comptime ST: type) type {
                                 try Hasher(ST.Element).hash(&scratch.children.?[0], &element, &scratch.chunks.items[i]);
                             }
                         }
-                        try h.merkleize(@ptrCast(scratch.chunks.items), ST.chunk_depth, out);
+                        try h.merkleize(scratch.chunks.items, ST.chunk_depth, out);
                     },
                     .container => {
                         @memset(scratch.chunks.items, [_]u8{0} ** 32);
@@ -116,7 +113,7 @@ pub fn Hasher(comptime ST: type) type {
                             const field_value = @field(value, field.name);
                             try Hasher(field.type).hash(&scratch.children.?[i], &field_value, &scratch.chunks.items[i]);
                         }
-                        try h.merkleize(@ptrCast(scratch.chunks.items), ST.chunk_depth, out);
+                        try h.merkleize(scratch.chunks.items, ST.chunk_depth, out);
                     },
                     else => unreachable,
                 }

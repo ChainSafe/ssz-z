@@ -30,9 +30,9 @@ pub fn ByteVectorType(comptime _length: comptime_int) type {
         pub const default_value: Type = [_]Element.Type{Element.default_value} ** length;
 
         pub fn hashTreeRoot(value: *const Type, out: *[32]u8) !void {
-            var chunks = [_][32]u8{[_]u8{0} ** 32} ** ((chunk_count + 1) / 2 * 2);
+            var chunks = [_][32]u8{[_]u8{0} ** 32} ** chunk_count;
             _ = serializeIntoBytes(value, @ptrCast(&chunks));
-            try merkleize(@ptrCast(&chunks), chunk_depth, out);
+            try merkleize(&chunks, chunk_depth, out);
         }
 
         pub fn serializeIntoBytes(value: *const Type, out: []u8) usize {
@@ -56,9 +56,9 @@ pub fn ByteVectorType(comptime _length: comptime_int) type {
             }
 
             pub fn hashTreeRoot(data: []const u8, out: *[32]u8) !void {
-                var chunks = [_][32]u8{[_]u8{0} ** 32} ** ((chunk_count + 1) / 2 * 2);
+                var chunks = [_][32]u8{[_]u8{0} ** 32} ** chunk_count;
                 @memcpy(@as([]u8, @ptrCast(&chunks))[0..fixed_size], data);
-                try merkleize(@ptrCast(&chunks), chunk_depth, out);
+                try merkleize(&chunks, chunk_depth, out);
             }
         };
 

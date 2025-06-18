@@ -143,13 +143,13 @@ pub fn BitListType(comptime _limit: comptime_int) type {
         }
 
         pub fn hashTreeRoot(allocator: std.mem.Allocator, value: *const Type, out: *[32]u8) !void {
-            const chunks = try allocator.alloc([32]u8, (chunkCount(value) + 1) / 2 * 2);
+            const chunks = try allocator.alloc([32]u8, chunkCount(value));
             defer allocator.free(chunks);
 
             @memset(chunks, [_]u8{0} ** 32);
             @memcpy(@as([]u8, @ptrCast(chunks))[0..value.data.items.len], value.data.items);
 
-            try merkleize(@ptrCast(chunks), chunk_depth, out);
+            try merkleize(chunks, chunk_depth, out);
             mixInLength(value.bit_len, out);
         }
 
@@ -262,7 +262,7 @@ pub fn BitListType(comptime _limit: comptime_int) type {
                 const last_1_index: u3 = @intCast(7 - last_byte_clz);
                 const bit_len = (data.len - 1) * 8 + last_1_index;
                 const chunk_count = (bit_len + 255) / 256;
-                const chunks = try allocator.alloc([32]u8, (chunk_count + 1) / 2 * 2);
+                const chunks = try allocator.alloc([32]u8, chunk_count);
                 defer allocator.free(chunks);
 
                 @memset(chunks, [_]u8{0} ** 32);
@@ -274,7 +274,7 @@ pub fn BitListType(comptime _limit: comptime_int) type {
                     @as([]u8, @ptrCast(chunks))[data.len - 1] ^= @as(u8, 1) << last_1_index;
                 }
 
-                try merkleize(@ptrCast(chunks), chunk_depth, out);
+                try merkleize(chunks, chunk_depth, out);
                 mixInLength(bit_len, out);
             }
         };

@@ -40,7 +40,7 @@ pub fn FixedListType(comptime ST: type, comptime _limit: comptime_int) type {
         }
 
         pub fn hashTreeRoot(allocator: std.mem.Allocator, value: *const Type, out: *[32]u8) !void {
-            const chunks = try allocator.alloc([32]u8, (chunkCount(value) + 1) / 2 * 2);
+            const chunks = try allocator.alloc([32]u8, chunkCount(value));
             defer allocator.free(chunks);
 
             @memset(chunks, [_]u8{0} ** 32);
@@ -52,7 +52,7 @@ pub fn FixedListType(comptime ST: type, comptime _limit: comptime_int) type {
                     try Element.hashTreeRoot(&element, &chunks[i]);
                 }
             }
-            try merkleize(@ptrCast(chunks), chunk_depth, out);
+            try merkleize(chunks, chunk_depth, out);
             mixInLength(value.items.len, out);
         }
 
@@ -133,7 +133,7 @@ pub fn FixedListType(comptime ST: type, comptime _limit: comptime_int) type {
                     (Element.fixed_size * len + 31) / 32
                 else
                     len;
-                const chunks = try allocator.alloc([32]u8, (chunk_count + 1) / 2 * 2);
+                const chunks = try allocator.alloc([32]u8, chunk_count);
                 defer allocator.free(chunks);
 
                 @memset(chunks, [_]u8{0} ** 32);
@@ -148,7 +148,7 @@ pub fn FixedListType(comptime ST: type, comptime _limit: comptime_int) type {
                         );
                     }
                 }
-                try merkleize(@ptrCast(chunks), chunk_depth, out);
+                try merkleize(chunks, chunk_depth, out);
                 mixInLength(len, out);
             }
         };
@@ -283,7 +283,7 @@ pub fn VariableListType(comptime ST: type, comptime _limit: comptime_int) type {
         }
 
         pub fn hashTreeRoot(allocator: std.mem.Allocator, value: *const Type, out: *[32]u8) !void {
-            const chunks = try allocator.alloc([32]u8, (chunkCount(value) + 1) / 2 * 2);
+            const chunks = try allocator.alloc([32]u8, chunkCount(value));
             defer allocator.free(chunks);
 
             @memset(chunks, [_]u8{0} ** 32);
@@ -291,7 +291,7 @@ pub fn VariableListType(comptime ST: type, comptime _limit: comptime_int) type {
             for (value.items, 0..) |element, i| {
                 try Element.hashTreeRoot(allocator, &element, &chunks[i]);
             }
-            try merkleize(@ptrCast(chunks), chunk_depth, out);
+            try merkleize(chunks, chunk_depth, out);
             mixInLength(value.items.len, out);
         }
 
@@ -379,7 +379,7 @@ pub fn VariableListType(comptime ST: type, comptime _limit: comptime_int) type {
                 const len = try length(data);
                 const chunk_count = len;
 
-                const chunks = try allocator.alloc([32]u8, (chunk_count + 1) / 2 * 2);
+                const chunks = try allocator.alloc([32]u8, chunk_count);
                 defer allocator.free(chunks);
                 @memset(chunks, [_]u8{0} ** 32);
 
@@ -393,7 +393,7 @@ pub fn VariableListType(comptime ST: type, comptime _limit: comptime_int) type {
                         &chunks[i],
                     );
                 }
-                try merkleize(@ptrCast(chunks), chunk_depth, out);
+                try merkleize(chunks, chunk_depth, out);
                 mixInLength(len, out);
             }
         };

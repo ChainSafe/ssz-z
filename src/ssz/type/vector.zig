@@ -28,7 +28,7 @@ pub fn FixedVectorType(comptime ST: type, comptime _length: comptime_int) type {
         pub const default_value: Type = [_]Element.Type{Element.default_value} ** length;
 
         pub fn hashTreeRoot(value: *const Type, out: *[32]u8) !void {
-            var chunks = [_][32]u8{[_]u8{0} ** 32} ** ((chunk_count + 1) / 2 * 2);
+            var chunks = [_][32]u8{[_]u8{0} ** 32} ** chunk_count;
             if (comptime isBasicType(Element)) {
                 _ = serializeIntoBytes(value, @ptrCast(&chunks));
             } else {
@@ -36,7 +36,7 @@ pub fn FixedVectorType(comptime ST: type, comptime _length: comptime_int) type {
                     try Element.hashTreeRoot(&element, &chunks[i]);
                 }
             }
-            try merkleize(@ptrCast(&chunks), chunk_depth, out);
+            try merkleize(&chunks, chunk_depth, out);
         }
 
         pub fn serializeIntoBytes(value: *const Type, out: []u8) usize {
@@ -71,7 +71,7 @@ pub fn FixedVectorType(comptime ST: type, comptime _length: comptime_int) type {
             }
 
             pub fn hashTreeRoot(data: []const u8, out: *[32]u8) !void {
-                var chunks = [_][32]u8{[_]u8{0} ** 32} ** ((chunk_count + 1) / 2 * 2);
+                var chunks = [_][32]u8{[_]u8{0} ** 32} ** chunk_count;
                 if (comptime isBasicType(Element)) {
                     @memcpy(@as([]u8, @ptrCast(&chunks))[0..fixed_size], data);
                 } else {
@@ -82,7 +82,7 @@ pub fn FixedVectorType(comptime ST: type, comptime _length: comptime_int) type {
                         );
                     }
                 }
-                try merkleize(@ptrCast(&chunks), chunk_depth, out);
+                try merkleize(&chunks, chunk_depth, out);
             }
         };
 
@@ -185,11 +185,11 @@ pub fn VariableVectorType(comptime ST: type, comptime _length: comptime_int) typ
         }
 
         pub fn hashTreeRoot(allocator: std.mem.Allocator, value: *const Type, out: *[32]u8) !void {
-            var chunks = [_][32]u8{[_]u8{0} ** 32} ** ((chunk_count + 1) / 2 * 2);
+            var chunks = [_][32]u8{[_]u8{0} ** 32} ** chunk_count;
             for (value, 0..) |element, i| {
                 try Element.hashTreeRoot(allocator, &element, &chunks[i]);
             }
-            try merkleize(@ptrCast(&chunks), chunk_depth, out);
+            try merkleize(&chunks, chunk_depth, out);
         }
 
         pub fn serializedSize(value: *const Type) usize {
@@ -246,12 +246,12 @@ pub fn VariableVectorType(comptime ST: type, comptime _length: comptime_int) typ
             }
 
             pub fn hashTreeRoot(allocator: std.mem.Allocator, data: []const u8, out: *[32]u8) !void {
-                var chunks = [_][32]u8{[_]u8{0} ** 32} ** ((chunk_count + 1) / 2 * 2);
+                var chunks = [_][32]u8{[_]u8{0} ** 32} ** chunk_count;
                 const offsets = try readVariableOffsets(data);
                 for (0..length) |i| {
                     try Element.serialized.hashTreeRoot(allocator, data[offsets[i]..offsets[i + 1]], &chunks[i]);
                 }
-                try merkleize(@ptrCast(&chunks), chunk_depth, out);
+                try merkleize(&chunks, chunk_depth, out);
             }
         };
 

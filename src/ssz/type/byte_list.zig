@@ -39,14 +39,14 @@ pub fn ByteListType(comptime _limit: comptime_int) type {
         }
 
         pub fn hashTreeRoot(allocator: std.mem.Allocator, value: *const Type, out: *[32]u8) !void {
-            const chunks = try allocator.alloc([32]u8, (chunkCount(value) + 1) / 2 * 2);
+            const chunks = try allocator.alloc([32]u8, chunkCount(value));
             defer allocator.free(chunks);
 
             @memset(chunks, [_]u8{0} ** 32);
 
             _ = serializeIntoBytes(value, @ptrCast(chunks));
 
-            try merkleize(@ptrCast(chunks), chunk_depth, out);
+            try merkleize(chunks, chunk_depth, out);
             mixInLength(value.items.len, out);
         }
 
@@ -76,13 +76,13 @@ pub fn ByteListType(comptime _limit: comptime_int) type {
             pub fn hashTreeRoot(allocator: std.mem.Allocator, data: []const u8, out: *[32]u8) !void {
                 const len = try length(data);
                 const chunk_count = (len + 31) / 32;
-                const chunks = try allocator.alloc([32]u8, (chunk_count + 1) / 2 * 2);
+                const chunks = try allocator.alloc([32]u8, chunk_count);
                 defer allocator.free(chunks);
 
                 @memset(chunks, [_]u8{0} ** 32);
                 @memcpy(@as([]u8, @ptrCast(chunks))[0..data.len], data);
 
-                try merkleize(@ptrCast(chunks), chunk_depth, out);
+                try merkleize(chunks, chunk_depth, out);
                 mixInLength(len, out);
             }
         };

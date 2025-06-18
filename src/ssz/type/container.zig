@@ -66,11 +66,11 @@ pub fn FixedContainerType(comptime ST: type) type {
         };
 
         pub fn hashTreeRoot(value: *const Type, out: *[32]u8) !void {
-            var chunks = [_][32]u8{[_]u8{0} ** 32} ** ((chunk_count + 1) / 2 * 2);
+            var chunks = [_][32]u8{[_]u8{0} ** 32} ** chunk_count;
             inline for (fields, 0..) |field, i| {
                 try field.type.hashTreeRoot(&@field(value, field.name), &chunks[i]);
             }
-            try merkleize(@ptrCast(&chunks), chunk_depth, out);
+            try merkleize(&chunks, chunk_depth, out);
         }
 
         pub fn serializeIntoBytes(value: *const Type, out: []u8) usize {
@@ -106,13 +106,13 @@ pub fn FixedContainerType(comptime ST: type) type {
             }
 
             pub fn hashTreeRoot(data: []const u8, out: *[32]u8) !void {
-                var chunks = [_][32]u8{[_]u8{0} ** 32} ** ((chunk_count + 1) / 2 * 2);
+                var chunks = [_][32]u8{[_]u8{0} ** 32} ** chunk_count;
                 var i: usize = 0;
                 inline for (fields, 0..) |field, field_i| {
                     try field.type.serialized.hashTreeRoot(data[i .. i + field.type.fixed_size], &chunks[field_i]);
                     i += field.type.fixed_size;
                 }
-                try merkleize(@ptrCast(&chunks), chunk_depth, out);
+                try merkleize(&chunks, chunk_depth, out);
             }
         };
 
@@ -284,7 +284,7 @@ pub fn VariableContainerType(comptime ST: type) type {
         }
 
         pub fn hashTreeRoot(allocator: std.mem.Allocator, value: *const Type, out: *[32]u8) !void {
-            var chunks = [_][32]u8{[_]u8{0} ** 32} ** ((chunk_count + 1) / 2 * 2);
+            var chunks = [_][32]u8{[_]u8{0} ** 32} ** chunk_count;
             inline for (fields, 0..) |field, i| {
                 if (comptime isFixedType(field.type)) {
                     try field.type.hashTreeRoot(&@field(value, field.name), &chunks[i]);
@@ -292,7 +292,7 @@ pub fn VariableContainerType(comptime ST: type) type {
                     try field.type.hashTreeRoot(allocator, &@field(value, field.name), &chunks[i]);
                 }
             }
-            try merkleize(@ptrCast(&chunks), chunk_depth, out);
+            try merkleize(&chunks, chunk_depth, out);
         }
 
         pub fn serializedSize(value: *const Type) usize {
@@ -431,7 +431,7 @@ pub fn VariableContainerType(comptime ST: type) type {
             }
 
             pub fn hashTreeRoot(allocator: std.mem.Allocator, data: []const u8, out: *[32]u8) !void {
-                var chunks = [_][32]u8{[_]u8{0} ** 32} ** ((chunk_count + 1) / 2 * 2);
+                var chunks = [_][32]u8{[_]u8{0} ** 32} ** chunk_count;
                 const ranges = try readFieldRanges(data);
 
                 inline for (fields, 0..) |field, i| {
@@ -449,7 +449,7 @@ pub fn VariableContainerType(comptime ST: type) type {
                     }
                 }
 
-                try merkleize(@ptrCast(&chunks), chunk_depth, out);
+                try merkleize(&chunks, chunk_depth, out);
             }
         };
 
