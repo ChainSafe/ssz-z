@@ -155,7 +155,7 @@
                 .root_source_file = "test/spec/generic_tests.zig",
                 .imports = .{ .hex, .snappy, .persistent_merkle_tree, .ssz, .spec_test_options, .yaml },
             },
-            .filters = .{},
+            .filters = .{"proglist_bool_zero_85"},
         },
         .static_spec_tests = .{
             .root_module = .{

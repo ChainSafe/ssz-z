@@ -58,7 +58,6 @@ pub fn parseYaml(comptime ST: type, allocator: Allocator, y: yaml.Yaml, out: *ST
             @memcpy(out.items, bytes);
             return;
         } else if (comptime ssz.isBasicType(ST.Element)) {
-            std.debug.print("zzz {s}", .{y.source});
             const items = try y.parse(allocator, []ST.Element.Type);
             out.* = ST.Type.empty;
             try out.resize(allocator, items.len);

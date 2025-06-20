@@ -191,7 +191,7 @@ pub fn FixedProgressiveListType(comptime ST: type) type {
                 const chunk_count = chunkCount(value);
                 if (chunk_count == 0) {
                     return try pool.createBranch(
-                        @enumFromInt(1),
+                        @enumFromInt(0),
                         @enumFromInt(0),
                         false,
                     );

@@ -1,6 +1,7 @@
 const std = @import("std");
 const merkleize = @import("hashing").merkleize;
 const mixInAux = @import("hashing").mixInAux;
+const hashOne = @import("hashing").hashOne;
 const Depth = @import("hashing").Depth;
 const Node = @import("persistent_merkle_tree").Node;
 const Gindex = @import("persistent_merkle_tree").Gindex;
@@ -80,7 +81,11 @@ pub fn merkleizeChunks(allocator: std.mem.Allocator, chunks: [][32]u8, out: *[32
     var subtree_i = subtree_count;
     while (subtree_i > 0) {
         subtree_i -= 1;
-        mixInAux(&subtree_roots[subtree_i], out);
+        hashOne(
+            out,
+            &subtree_roots[subtree_i],
+            out,
+        );
     }
 }
 
@@ -90,12 +95,12 @@ pub fn getNodes(pool: *Node.Pool, root: Node.Id, out: []Node.Id) !void {
     var n = root;
     var l: usize = 0;
     for (0..subtree_count) |subtree_i| {
-        const subtree_root = try n.getRight(pool);
+        const subtree_root = try n.getLeft(pool);
         const subtree_length = @min(subtreeLength(subtree_i), out.len - l);
         const subtree_depth = subtreeDepth(subtree_i);
         try subtree_root.getNodesAtDepth(pool, subtree_depth, 0, out[l .. l + subtree_length]);
         l += subtree_length;
-        n = try n.getLeft(pool);
+        n = try n.getRight(pool);
     }
     if (!std.mem.eql(u8, &n.getRoot(pool).*, &[_]u8{0} ** 32)) {
         return error.InvalidTerminatorNode;
@@ -110,10 +115,10 @@ pub fn fillWithContents(pool: *Node.Pool, nodes: []Node.Id, should_ref: bool) !N
         const subtree_depth = subtreeDepth(subtree_i);
         const subtree_length = @min(subtreeLength(subtree_i), nodes.len - l);
         const subtree_root = try Node.fillWithContents(pool, nodes[l .. l + subtree_length], subtree_depth, false);
-        l -= subtree_length;
+        l += subtree_length;
         n = try pool.createBranch(
-            n,
             subtree_root,
+            n,
             should_ref,
         );
     }

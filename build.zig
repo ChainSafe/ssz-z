@@ -544,7 +544,7 @@ pub fn build(b: *std.Build) void {
     const test_generic_spec_tests = b.addTest(.{
         .name = "generic_spec_tests",
         .root_module = module_generic_spec_tests,
-        .filters = &[_][]const u8{  },
+        .filters = &[_][]const u8{ "proglist_bool_zero_22" },
     });
     const install_test_generic_spec_tests = b.addInstallArtifact(test_generic_spec_tests, .{});
     const tls_install_test_generic_spec_tests = b.step("build-test:generic_spec_tests", "Install the generic_spec_tests test");

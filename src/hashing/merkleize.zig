@@ -54,7 +54,7 @@ pub fn maxChunksToDepth(n: usize) Depth {
 }
 
 pub fn mixInLength(len: u256, out: *[32]u8) void {
-    var tmp: [32]u8 = undefined;
+    var tmp: [32]u8 = [_]u8{0} ** 32;
     std.mem.writeInt(u256, &tmp, len, .little);
     hashOne(out, out, &tmp);
 }
