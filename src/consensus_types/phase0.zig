@@ -31,6 +31,8 @@ pub const Validator = ssz.FixedContainerType(struct {
     withdrawable_epoch: p.Epoch,
 });
 
+pub const Validators = ssz.FixedListType(Validator, preset.VALIDATOR_REGISTRY_LIMIT);
+
 pub const AttestationData = ssz.FixedContainerType(struct {
     slot: p.Slot,
     index: p.CommitteeIndex,
@@ -155,7 +157,7 @@ pub const BeaconState = ssz.VariableContainerType(struct {
     eth1_data: Eth1Data,
     eth1_data_votes: Eth1DataVotes,
     eth1_deposit_index: p.Uint64,
-    validators: ssz.FixedListType(Validator, preset.VALIDATOR_REGISTRY_LIMIT),
+    validators: Validators,
     balances: ssz.FixedListType(p.Gwei, preset.VALIDATOR_REGISTRY_LIMIT),
     randao_mixes: ssz.FixedVectorType(p.Bytes32, preset.EPOCHS_PER_HISTORICAL_VECTOR),
     slashings: ssz.FixedVectorType(p.Gwei, preset.EPOCHS_PER_SLASHINGS_VECTOR),
