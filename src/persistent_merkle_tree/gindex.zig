@@ -97,7 +97,7 @@ pub const Gindex = enum(GindexUint) {
 
     pub fn sortAsc(items: []Gindex) void {
         std.sort.pdq(Gindex, items, {}, struct {
-            pub fn lessThan(a: Gindex, b: Gindex) bool {
+            pub fn lessThan(_: void, a: Gindex, b: Gindex) bool {
                 return @intFromEnum(a) < @intFromEnum(b);
             }
         }.lessThan);

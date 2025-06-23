@@ -194,6 +194,16 @@ pub fn FixedContainerType(comptime ST: type) type {
             }
         }
 
+        pub fn getFieldType(comptime name: []const u8) type {
+            inline for (fields) |field| {
+                if (std.mem.eql(u8, name, field.name)) {
+                    return field.type;
+                }
+            } else {
+                @compileError("field does not exist");
+            }
+        }
+
         pub fn getFieldGindex(comptime name: []const u8) Gindex {
             const field_index = getFieldIndex(name);
             return comptime Gindex.fromDepth(chunk_depth, field_index);
@@ -352,6 +362,16 @@ pub fn VariableContainerType(comptime ST: type) type {
             inline for (fields, 0..) |field, i| {
                 if (std.mem.eql(u8, name, field.name)) {
                     return i;
+                }
+            } else {
+                @compileError("field does not exist");
+            }
+        }
+
+        pub fn getFieldType(comptime name: []const u8) type {
+            inline for (fields) |field| {
+                if (std.mem.eql(u8, name, field.name)) {
+                    return field.type;
                 }
             } else {
                 @compileError("field does not exist");
