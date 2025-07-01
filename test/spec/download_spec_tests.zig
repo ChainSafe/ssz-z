@@ -110,11 +110,12 @@ fn download_spec_test_archive(
 
     std.log.info("writing response to disk - {s}", .{filename});
 
-    var buf: [16 * 1024000]u8 = undefined;
+    var buf = try allocator.alloc(u8, 16 * 1024000);
+    defer allocator.free(buf);
     var reader = req.reader();
     var bytes_count: usize = 0;
     while (true) {
-        const read_bytes = try reader.readAll(&buf);
+        const read_bytes = try reader.readAll(buf);
         try file.writeAll(buf[0..read_bytes]);
         bytes_count += read_bytes;
         if (read_bytes != buf.len) {
