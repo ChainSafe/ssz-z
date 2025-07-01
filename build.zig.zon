@@ -14,7 +14,6 @@
             .url = "git+https://github.com/chainsafe/snappy#7f30207aadbf9509b51ce9e0d4cdb7ae83a2a86e",
             .hash = "snappy-0.1.0-n4Aaqnm2AgAAPFpcJoE2b7uCXteQ4LvhceYrwDrn02LM",
         },
-        // zig fetch --save git+https://github.com/ChainSafe/hashtree-z.git#te/fix_macos_build
         .hashtree = .{
             .url = "git+https://github.com/ChainSafe/hashtree-z#6b96e3f0c7c1cc935bd9cfe1cfcbce84ed5a396a",
             .hash = "hashtree-0.1.0-sBOovqq8DACfez1ldXMSZ6qr_-yZPCbSv9d9o8G16uU3",
