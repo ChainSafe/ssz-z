@@ -27,6 +27,8 @@ pub const SignedVoluntaryExit = phase0.SignedVoluntaryExit;
 pub const Eth1Block = phase0.Eth1Block;
 pub const AggregateAndProof = phase0.AggregateAndProof;
 pub const SignedAggregateAndProof = phase0.SignedAggregateAndProof;
+pub const HistoricalBlockRoots = phase0.HistoricalBlockRoots;
+pub const HistoricalStateRoots = phase0.HistoricalStateRoots;
 
 pub const SyncAggregate = ssz.FixedContainerType(struct {
     sync_committee_bits: ssz.BitVectorType(preset.SYNC_COMMITTEE_SIZE),
@@ -69,8 +71,8 @@ pub const BeaconState = ssz.VariableContainerType(struct {
     slot: p.Slot,
     fork: Fork,
     latest_block_header: BeaconBlockHeader,
-    block_roots: ssz.FixedVectorType(p.Root, preset.SLOTS_PER_HISTORICAL_ROOT),
-    state_roots: ssz.FixedVectorType(p.Root, preset.SLOTS_PER_HISTORICAL_ROOT),
+    block_roots: HistoricalBlockRoots,
+    state_roots: HistoricalStateRoots,
     historical_roots: ssz.FixedListType(p.Root, preset.HISTORICAL_ROOTS_LIMIT),
     eth1_data: Eth1Data,
     eth1_data_votes: phase0.Eth1DataVotes,
@@ -94,6 +96,8 @@ pub const SignedBeaconBlock = ssz.VariableContainerType(struct {
     message: BeaconBlock,
     signature: p.BLSSignature,
 });
+
+pub const EpochParticipation = ssz.FixedListType(p.ParticipationFlags, preset.VALIDATOR_REGISTRY_LIMIT);
 
 pub const SyncCommitteeMessage = ssz.FixedContainerType(struct {
     slot: p.Slot,
