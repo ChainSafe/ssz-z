@@ -28,6 +28,8 @@ pub const SignedVoluntaryExit = phase0.SignedVoluntaryExit;
 pub const Eth1Block = phase0.Eth1Block;
 pub const HistoricalBlockRoots = phase0.HistoricalBlockRoots;
 pub const HistoricalStateRoots = phase0.HistoricalStateRoots;
+pub const ProposerSlashings = phase0.ProposerSlashings;
+pub const AttesterSlashings = phase0.AttesterSlashings;
 
 pub const SyncAggregate = altair.SyncAggregate;
 pub const SyncCommittee = altair.SyncCommittee;
@@ -180,8 +182,8 @@ pub const BeaconBlockBody = ssz.VariableContainerType(struct {
     randao_reveal: p.BLSSignature,
     eth1_data: Eth1Data,
     graffiti: p.Bytes32,
-    proposer_slashings: ssz.FixedListType(ProposerSlashing, preset.MAX_PROPOSER_SLASHINGS),
-    attester_slashings: ssz.VariableListType(AttesterSlashing, preset.MAX_ATTESTER_SLASHINGS_ELECTRA),
+    proposer_slashings: ProposerSlashings,
+    attester_slashings: AttesterSlashings,
     attestations: ssz.VariableListType(Attestation, preset.MAX_ATTESTATIONS_ELECTRA),
     deposits: ssz.FixedListType(Deposit, preset.MAX_DEPOSITS),
     voluntary_exits: ssz.FixedListType(SignedVoluntaryExit, preset.MAX_VOLUNTARY_EXITS),
