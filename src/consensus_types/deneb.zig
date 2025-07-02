@@ -49,6 +49,7 @@ pub const SyncAggregatorSelectionData = altair.SyncAggregatorSelectionData;
 pub const PowBlock = bellatrix.PowBlock;
 pub const LogsBloom = bellatrix.LogsBloom;
 pub const ExtraData = bellatrix.ExtraData;
+pub const Transactions = bellatrix.Transactions;
 
 pub const Withdrawal = capella.Withdrawal;
 pub const BLSToExecutionChange = capella.BLSToExecutionChange;
@@ -120,7 +121,7 @@ pub const ExecutionPayload = ssz.VariableContainerType(struct {
     extra_data: ExtraData,
     base_fee_per_gas: p.Uint256,
     block_hash: p.Bytes32,
-    transactions: ssz.VariableListType(ssz.ByteListType(preset.MAX_BYTES_PER_TRANSACTION), preset.MAX_TRANSACTIONS_PER_PAYLOAD),
+    transactions: Transactions,
     withdrawals: ssz.FixedListType(Withdrawal, preset.MAX_WITHDRAWALS_PER_PAYLOAD),
     blob_gas_used: p.Uint64,
     excess_blob_gas: p.Uint64,
