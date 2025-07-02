@@ -139,6 +139,8 @@ pub const ExecutionPayloadHeader = ssz.VariableContainerType(struct {
     excess_blob_gas: p.Uint64,
 });
 
+pub const BlobKzgCommitments = ssz.FixedListType(p.KZGCommitment, preset.MAX_BLOB_COMMITMENTS_PER_BLOCK);
+
 pub const BeaconBlockBody = ssz.VariableContainerType(struct {
     randao_reveal: p.BLSSignature,
     eth1_data: Eth1Data,
@@ -151,7 +153,7 @@ pub const BeaconBlockBody = ssz.VariableContainerType(struct {
     sync_aggregate: SyncAggregate,
     execution_payload: ExecutionPayload,
     bls_to_execution_changes: SignedBLSToExecutionChanges,
-    blob_kzg_commitments: ssz.FixedListType(p.KZGCommitment, preset.MAX_BLOB_COMMITMENTS_PER_BLOCK),
+    blob_kzg_commitments: BlobKzgCommitments,
 });
 
 pub const BeaconBlock = ssz.VariableContainerType(struct {
