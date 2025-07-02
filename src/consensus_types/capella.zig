@@ -111,6 +111,8 @@ pub const HistoricalSummary = ssz.FixedContainerType(struct {
     state_summary_root: p.Root,
 });
 
+pub const Withdrawals = ssz.FixedListType(Withdrawal, preset.MAX_WITHDRAWALS_PER_PAYLOAD);
+
 pub const ExecutionPayload = ssz.VariableContainerType(struct {
     parent_hash: p.Bytes32,
     fee_recipient: p.Bytes20,
@@ -126,7 +128,7 @@ pub const ExecutionPayload = ssz.VariableContainerType(struct {
     base_fee_per_gas: p.Uint256,
     block_hash: p.Bytes32,
     transactions: Transactions,
-    withdrawals: ssz.FixedListType(Withdrawal, preset.MAX_WITHDRAWALS_PER_PAYLOAD),
+    withdrawals: Withdrawals,
 });
 
 pub const ExecutionPayloadHeader = ssz.VariableContainerType(struct {
