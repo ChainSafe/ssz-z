@@ -131,6 +131,8 @@ pub const Attestations = ssz.VariableListType(Attestation, preset.MAX_ATTESTATIO
 
 pub const Deposits = ssz.FixedListType(Deposit, preset.MAX_DEPOSITS);
 
+pub const VoluntaryExits = ssz.FixedListType(SignedVoluntaryExit, preset.MAX_VOLUNTARY_EXITS);
+
 pub const BeaconBlockBody = ssz.VariableContainerType(struct {
     randao_reveal: p.BLSSignature,
     eth1_data: Eth1Data,
@@ -139,7 +141,7 @@ pub const BeaconBlockBody = ssz.VariableContainerType(struct {
     attester_slashings: AttesterSlashings,
     attestations: Attestations,
     deposits: Deposits,
-    voluntary_exits: ssz.FixedListType(SignedVoluntaryExit, preset.MAX_VOLUNTARY_EXITS),
+    voluntary_exits: VoluntaryExits,
 });
 
 pub const BeaconBlock = ssz.VariableContainerType(struct {
