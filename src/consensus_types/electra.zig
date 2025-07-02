@@ -30,6 +30,7 @@ pub const HistoricalBlockRoots = phase0.HistoricalBlockRoots;
 pub const HistoricalStateRoots = phase0.HistoricalStateRoots;
 pub const ProposerSlashings = phase0.ProposerSlashings;
 pub const AttesterSlashings = phase0.AttesterSlashings;
+pub const Deposits = phase0.Deposits;
 
 pub const SyncAggregate = altair.SyncAggregate;
 pub const SyncCommittee = altair.SyncCommittee;
@@ -187,7 +188,7 @@ pub const BeaconBlockBody = ssz.VariableContainerType(struct {
     proposer_slashings: ProposerSlashings,
     attester_slashings: AttesterSlashings,
     attestations: Attestations,
-    deposits: ssz.FixedListType(Deposit, preset.MAX_DEPOSITS),
+    deposits: Deposits,
     voluntary_exits: ssz.FixedListType(SignedVoluntaryExit, preset.MAX_VOLUNTARY_EXITS),
     sync_aggregate: SyncAggregate,
     execution_payload: ExecutionPayload,
