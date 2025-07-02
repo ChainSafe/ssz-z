@@ -56,6 +56,7 @@ pub const BLSToExecutionChange = capella.BLSToExecutionChange;
 pub const SignedBLSToExecutionChange = capella.SignedBLSToExecutionChange;
 pub const SignedBLSToExecutionChanges = capella.SignedBLSToExecutionChanges;
 pub const HistoricalSummary = capella.HistoricalSummary;
+pub const Withdrawals = capella.Withdrawals;
 
 pub const BlobSidecar = ssz.FixedContainerType(struct {
     index: p.BlobIndex,
@@ -122,7 +123,7 @@ pub const ExecutionPayload = ssz.VariableContainerType(struct {
     base_fee_per_gas: p.Uint256,
     block_hash: p.Bytes32,
     transactions: Transactions,
-    withdrawals: ssz.FixedListType(Withdrawal, preset.MAX_WITHDRAWALS_PER_PAYLOAD),
+    withdrawals: Withdrawals,
     blob_gas_used: p.Uint64,
     excess_blob_gas: p.Uint64,
 });
