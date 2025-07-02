@@ -48,6 +48,7 @@ pub const HistoricalSummary = capella.HistoricalSummary;
 pub const BlobIdentifier = deneb.BlobIdentifier;
 pub const ExecutionPayload = deneb.ExecutionPayload;
 pub const ExecutionPayloadHeader = deneb.ExecutionPayloadHeader;
+pub const BlobKzgCommitments = deneb.BlobKzgCommitments;
 
 pub const PendingDeposit = ssz.FixedContainerType(struct {
     pubkey: p.BLSPubkey,
@@ -187,7 +188,7 @@ pub const BeaconBlockBody = ssz.VariableContainerType(struct {
     sync_aggregate: SyncAggregate,
     execution_payload: ExecutionPayload,
     bls_to_execution_changes: SignedBLSToExecutionChanges,
-    blob_kzg_commitments: ssz.FixedListType(p.KZGCommitment, preset.MAX_BLOB_COMMITMENTS_PER_BLOCK),
+    blob_kzg_commitments: BlobKzgCommitments,
     execution_requests: ExecutionRequests,
 });
 
