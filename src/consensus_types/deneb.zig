@@ -46,6 +46,7 @@ pub const PowBlock = bellatrix.PowBlock;
 pub const Withdrawal = capella.Withdrawal;
 pub const BLSToExecutionChange = capella.BLSToExecutionChange;
 pub const SignedBLSToExecutionChange = capella.SignedBLSToExecutionChange;
+pub const SignedBLSToExecutionChanges = capella.SignedBLSToExecutionChanges;
 pub const HistoricalSummary = capella.HistoricalSummary;
 
 pub const BlobSidecar = ssz.FixedContainerType(struct {
@@ -149,7 +150,7 @@ pub const BeaconBlockBody = ssz.VariableContainerType(struct {
     voluntary_exits: ssz.FixedListType(SignedVoluntaryExit, preset.MAX_VOLUNTARY_EXITS),
     sync_aggregate: SyncAggregate,
     execution_payload: ExecutionPayload,
-    bls_to_execution_changes: ssz.FixedListType(SignedBLSToExecutionChange, preset.MAX_BLS_TO_EXECUTION_CHANGES),
+    bls_to_execution_changes: SignedBLSToExecutionChanges,
     blob_kzg_commitments: ssz.FixedListType(p.KZGCommitment, preset.MAX_BLOB_COMMITMENTS_PER_BLOCK),
 });
 

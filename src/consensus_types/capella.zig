@@ -96,6 +96,8 @@ pub const SignedBLSToExecutionChange = ssz.FixedContainerType(struct {
     signature: p.BLSSignature,
 });
 
+pub const SignedBLSToExecutionChanges = ssz.FixedListType(SignedBLSToExecutionChange, preset.MAX_BLS_TO_EXECUTION_CHANGES);
+
 pub const HistoricalSummary = ssz.FixedContainerType(struct {
     block_summary_root: p.Root,
     state_summary_root: p.Root,
@@ -148,7 +150,7 @@ pub const BeaconBlockBody = ssz.VariableContainerType(struct {
     voluntary_exits: ssz.FixedListType(SignedVoluntaryExit, preset.MAX_VOLUNTARY_EXITS),
     sync_aggregate: SyncAggregate,
     execution_payload: ExecutionPayload,
-    bls_to_execution_changes: ssz.FixedListType(SignedBLSToExecutionChange, preset.MAX_BLS_TO_EXECUTION_CHANGES),
+    bls_to_execution_changes: SignedBLSToExecutionChanges,
 });
 
 pub const BeaconBlock = ssz.VariableContainerType(struct {
