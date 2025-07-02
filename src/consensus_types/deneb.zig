@@ -47,6 +47,7 @@ pub const SignedContributionAndProof = altair.SignedContributionAndProof;
 pub const SyncAggregatorSelectionData = altair.SyncAggregatorSelectionData;
 
 pub const PowBlock = bellatrix.PowBlock;
+pub const LogsBloom = bellatrix.LogsBloom;
 
 pub const Withdrawal = capella.Withdrawal;
 pub const BLSToExecutionChange = capella.BLSToExecutionChange;
@@ -109,7 +110,7 @@ pub const ExecutionPayload = ssz.VariableContainerType(struct {
     fee_recipient: p.Bytes20,
     state_root: p.Bytes32,
     receipts_root: p.Bytes32,
-    logs_bloom: ssz.ByteVectorType(preset.BYTES_PER_LOGS_BLOOM),
+    logs_bloom: LogsBloom,
     prev_randao: p.Bytes32,
     block_number: p.Uint64,
     gas_limit: p.Uint64,
@@ -129,7 +130,7 @@ pub const ExecutionPayloadHeader = ssz.VariableContainerType(struct {
     fee_recipient: p.Bytes20,
     state_root: p.Bytes32,
     receipts_root: p.Bytes32,
-    logs_bloom: ssz.ByteVectorType(preset.BYTES_PER_LOGS_BLOOM),
+    logs_bloom: LogsBloom,
     prev_randao: p.Bytes32,
     block_number: p.Uint64,
     gas_limit: p.Uint64,
