@@ -35,6 +35,7 @@ pub const ProposerSlashings = phase0.ProposerSlashings;
 pub const AttesterSlashings = phase0.AttesterSlashings;
 pub const Attestations = phase0.Attestations;
 pub const Deposits = phase0.Deposits;
+pub const VoluntaryExits = phase0.VoluntaryExits;
 
 pub const SyncAggregate = altair.SyncAggregate;
 pub const SyncCommittee = altair.SyncCommittee;
@@ -151,7 +152,7 @@ pub const BeaconBlockBody = ssz.VariableContainerType(struct {
     attester_slashings: AttesterSlashings,
     attestations: Attestations,
     deposits: Deposits,
-    voluntary_exits: ssz.FixedListType(SignedVoluntaryExit, preset.MAX_VOLUNTARY_EXITS),
+    voluntary_exits: VoluntaryExits,
     sync_aggregate: SyncAggregate,
     execution_payload: ExecutionPayload,
     bls_to_execution_changes: SignedBLSToExecutionChanges,
