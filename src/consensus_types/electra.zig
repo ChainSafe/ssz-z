@@ -111,6 +111,8 @@ pub const Attestation = ssz.VariableContainerType(struct {
     committee_bits: ssz.BitVectorType(preset.MAX_COMMITTEES_PER_SLOT),
 });
 
+pub const Attestations = ssz.VariableListType(Attestation, preset.MAX_ATTESTATIONS_ELECTRA);
+
 pub const IndexedAttestation = ssz.VariableContainerType(struct {
     attesting_indices: ssz.FixedListType(p.ValidatorIndex, preset.MAX_VALIDATORS_PER_COMMITTEE * preset.MAX_COMMITTEES_PER_SLOT),
     data: AttestationData,
@@ -184,7 +186,7 @@ pub const BeaconBlockBody = ssz.VariableContainerType(struct {
     graffiti: p.Bytes32,
     proposer_slashings: ProposerSlashings,
     attester_slashings: AttesterSlashings,
-    attestations: ssz.VariableListType(Attestation, preset.MAX_ATTESTATIONS_ELECTRA),
+    attestations: Attestations,
     deposits: ssz.FixedListType(Deposit, preset.MAX_DEPOSITS),
     voluntary_exits: ssz.FixedListType(SignedVoluntaryExit, preset.MAX_VOLUNTARY_EXITS),
     sync_aggregate: SyncAggregate,
