@@ -50,6 +50,7 @@ pub const LightClientFinalityUpdate = altair.LightClientFinalityUpdate;
 pub const LightClientOptimisticUpdate = altair.LightClientOptimisticUpdate;
 
 pub const LogsBloom = ssz.ByteVectorType(preset.BYTES_PER_LOGS_BLOOM);
+pub const ExtraData = ssz.ByteListType(preset.MAX_EXTRA_DATA_BYTES);
 
 pub const ExecutionPayload = ssz.VariableContainerType(struct {
     parent_hash: p.Bytes32,
@@ -62,7 +63,7 @@ pub const ExecutionPayload = ssz.VariableContainerType(struct {
     gas_limit: p.Uint64,
     gas_used: p.Uint64,
     timestamp: p.Uint64,
-    extra_data: ssz.ByteListType(preset.MAX_EXTRA_DATA_BYTES),
+    extra_data: ExtraData,
     base_fee_per_gas: p.Uint256,
     block_hash: p.Bytes32,
     transactions: ssz.VariableListType(ssz.ByteListType(preset.MAX_BYTES_PER_TRANSACTION), preset.MAX_TRANSACTIONS_PER_PAYLOAD),
@@ -79,7 +80,7 @@ pub const ExecutionPayloadHeader = ssz.VariableContainerType(struct {
     gas_limit: p.Uint64,
     gas_used: p.Uint64,
     timestamp: p.Uint64,
-    extra_data: ssz.ByteListType(preset.MAX_EXTRA_DATA_BYTES),
+    extra_data: ExtraData,
     base_fee_per_gas: p.Uint256,
     block_hash: p.Bytes32,
     transactions_root: p.Root,
