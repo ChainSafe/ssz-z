@@ -156,6 +156,20 @@ pub fn FixedContainerType(comptime ST: type) type {
             }
         };
 
+        pub fn serializeIntoJson(allocator: std.mem.Allocator, writer: anytype, in: *const Type) !void {
+            try writer.beginObject();
+            inline for (fields) |field| {
+                const field_value = @field(in, field.name);
+                try writer.objectField(field.name);
+                if (comptime isBasicType(field.type)) {
+                    try field.type.serializeIntoJson(writer, &field_value);
+                } else {
+                    try field.type.serializeIntoJson(allocator, writer, &field_value);
+                }
+            }
+            try writer.endObject();
+        }
+
         pub fn deserializeFromJson(source: *std.json.Scanner, out: *Type) !void {
             // start object token "{"
             switch (try source.next()) {
@@ -480,6 +494,20 @@ pub fn VariableContainerType(comptime ST: type) type {
                 return try Node.fillWithContents(pool, &nodes, chunk_depth, false);
             }
         };
+
+        pub fn serializeIntoJson(allocator: std.mem.Allocator, writer: anytype, in: *const Type) !void {
+            try writer.beginObject();
+            inline for (fields) |field| {
+                const field_value = @field(in, field.name);
+                try writer.objectField(field.name);
+                if (comptime isBasicType(field.type)) {
+                    try field.type.serializeIntoJson(writer, &field_value);
+                } else {
+                    try field.type.serializeIntoJson(allocator, writer, &field_value);
+                }
+            }
+            try writer.endObject();
+        }
 
         pub fn deserializeFromJson(allocator: std.mem.Allocator, source: *std.json.Scanner, out: *Type) !void {
             // start object token "{"
