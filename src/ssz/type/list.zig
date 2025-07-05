@@ -100,8 +100,7 @@ pub fn FixedListType(comptime ST: type, comptime _limit: comptime_int) type {
                     else => {},
                 }
 
-                try out.ensureUnusedCapacity(allocator, 1);
-                out.expandToCapacity();
+                _ = try out.addOne(allocator);
                 try Element.deserializeFromJson(source, &out.items[i]);
             }
             return error.invalidLength;
@@ -470,8 +469,7 @@ pub fn VariableListType(comptime ST: type, comptime _limit: comptime_int) type {
                     else => {},
                 }
 
-                try out.ensureUnusedCapacity(allocator, 1);
-                out.expandToCapacity();
+                _ = try out.addOne(allocator);
                 try Element.deserializeFromJson(allocator, source, &out.items[i]);
             }
             return error.invalidLength;
