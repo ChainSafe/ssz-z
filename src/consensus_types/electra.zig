@@ -29,7 +29,7 @@ pub const Eth1Block = phase0.Eth1Block;
 pub const HistoricalBlockRoots = phase0.HistoricalBlockRoots;
 pub const HistoricalStateRoots = phase0.HistoricalStateRoots;
 pub const ProposerSlashings = phase0.ProposerSlashings;
-pub const AttesterSlashings = phase0.AttesterSlashings;
+pub const AttesterSlashings = ssz.VariableListType(AttesterSlashing, preset.MAX_ATTESTER_SLASHINGS_ELECTRA);
 pub const Deposits = phase0.Deposits;
 pub const VoluntaryExits = phase0.VoluntaryExits;
 
