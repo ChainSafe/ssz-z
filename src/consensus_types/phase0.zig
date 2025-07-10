@@ -31,6 +31,8 @@ pub const Validator = ssz.FixedContainerType(struct {
     withdrawable_epoch: p.Epoch,
 });
 
+pub const Validators = ssz.FixedListType(Validator, preset.VALIDATOR_REGISTRY_LIMIT);
+
 pub const AttestationData = ssz.FixedContainerType(struct {
     slot: p.Slot,
     index: p.CommitteeIndex,
@@ -58,9 +60,15 @@ pub const Eth1Data = ssz.FixedContainerType(struct {
     block_hash: p.Bytes32,
 });
 
+pub const Eth1DataVotes = ssz.FixedListType(Eth1Data, preset.EPOCHS_PER_ETH1_VOTING_PERIOD * preset.SLOTS_PER_EPOCH);
+
+pub const JustificationBits = ssz.BitVectorType(c.JUSTIFICATION_BITS_LENGTH);
+pub const HistoricalBlockRoots = ssz.FixedVectorType(p.Root, preset.SLOTS_PER_HISTORICAL_ROOT);
+pub const HistoricalStateRoots = ssz.FixedVectorType(p.Root, preset.SLOTS_PER_HISTORICAL_ROOT);
+
 pub const HistoricalBatch = ssz.FixedContainerType(struct {
-    block_roots: ssz.FixedVectorType(p.Root, preset.SLOTS_PER_HISTORICAL_ROOT),
-    state_roots: ssz.FixedVectorType(p.Root, preset.SLOTS_PER_HISTORICAL_ROOT),
+    block_roots: HistoricalBlockRoots,
+    state_roots: HistoricalStateRoots,
 });
 
 pub const DepositMessage = ssz.FixedContainerType(struct {
@@ -115,15 +123,25 @@ pub const VoluntaryExit = ssz.FixedContainerType(struct {
     validator_index: p.ValidatorIndex,
 });
 
+pub const ProposerSlashings = ssz.FixedListType(ProposerSlashing, preset.MAX_PROPOSER_SLASHINGS);
+
+pub const AttesterSlashings = ssz.VariableListType(AttesterSlashing, preset.MAX_ATTESTER_SLASHINGS);
+
+pub const Attestations = ssz.VariableListType(Attestation, preset.MAX_ATTESTATIONS);
+
+pub const Deposits = ssz.FixedListType(Deposit, preset.MAX_DEPOSITS);
+
+pub const VoluntaryExits = ssz.FixedListType(SignedVoluntaryExit, preset.MAX_VOLUNTARY_EXITS);
+
 pub const BeaconBlockBody = ssz.VariableContainerType(struct {
     randao_reveal: p.BLSSignature,
     eth1_data: Eth1Data,
     graffiti: p.Bytes32,
-    proposer_slashings: ssz.FixedListType(ProposerSlashing, preset.MAX_PROPOSER_SLASHINGS),
-    attester_slashings: ssz.VariableListType(AttesterSlashing, preset.MAX_ATTESTER_SLASHINGS),
-    attestations: ssz.VariableListType(Attestation, preset.MAX_ATTESTATIONS),
-    deposits: ssz.FixedListType(Deposit, preset.MAX_DEPOSITS),
-    voluntary_exits: ssz.FixedListType(SignedVoluntaryExit, preset.MAX_VOLUNTARY_EXITS),
+    proposer_slashings: ProposerSlashings,
+    attester_slashings: AttesterSlashings,
+    attestations: Attestations,
+    deposits: Deposits,
+    voluntary_exits: VoluntaryExits,
 });
 
 pub const BeaconBlock = ssz.VariableContainerType(struct {
@@ -139,25 +157,27 @@ pub const SignedBeaconBlockHeader = ssz.FixedContainerType(struct {
     signature: p.BLSSignature,
 });
 
+pub const EpochAttestations = ssz.VariableListType(PendingAttestation, preset.MAX_ATTESTATIONS * preset.SLOTS_PER_EPOCH);
+
 pub const BeaconState = ssz.VariableContainerType(struct {
     genesis_time: p.Uint64,
     genesis_validators_root: p.Root,
     slot: p.Slot,
     fork: Fork,
     latest_block_header: BeaconBlockHeader,
-    block_roots: ssz.FixedVectorType(p.Root, preset.SLOTS_PER_HISTORICAL_ROOT),
-    state_roots: ssz.FixedVectorType(p.Root, preset.SLOTS_PER_HISTORICAL_ROOT),
+    block_roots: HistoricalBlockRoots,
+    state_roots: HistoricalStateRoots,
     historical_roots: ssz.FixedListType(p.Root, preset.HISTORICAL_ROOTS_LIMIT),
     eth1_data: Eth1Data,
-    eth1_data_votes: ssz.FixedListType(Eth1Data, preset.EPOCHS_PER_ETH1_VOTING_PERIOD * preset.SLOTS_PER_EPOCH),
+    eth1_data_votes: Eth1DataVotes,
     eth1_deposit_index: p.Uint64,
-    validators: ssz.FixedListType(Validator, preset.VALIDATOR_REGISTRY_LIMIT),
+    validators: Validators,
     balances: ssz.FixedListType(p.Gwei, preset.VALIDATOR_REGISTRY_LIMIT),
     randao_mixes: ssz.FixedVectorType(p.Bytes32, preset.EPOCHS_PER_HISTORICAL_VECTOR),
     slashings: ssz.FixedVectorType(p.Gwei, preset.EPOCHS_PER_SLASHINGS_VECTOR),
-    previous_epoch_attestations: ssz.VariableListType(PendingAttestation, preset.MAX_ATTESTATIONS * preset.SLOTS_PER_EPOCH),
-    current_epoch_attestations: ssz.VariableListType(PendingAttestation, preset.MAX_ATTESTATIONS * preset.SLOTS_PER_EPOCH),
-    justification_bits: ssz.BitVectorType(c.JUSTIFICATION_BITS_LENGTH),
+    previous_epoch_attestations: EpochAttestations,
+    current_epoch_attestations: EpochAttestations,
+    justification_bits: JustificationBits,
     previous_justified_checkpoint: Checkpoint,
     current_justified_checkpoint: Checkpoint,
     finalized_checkpoint: Checkpoint,
