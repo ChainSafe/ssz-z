@@ -18,6 +18,10 @@ pub fn BitList(comptime limit: comptime_int) type {
             .bit_len = 0,
         };
 
+        pub fn equals(self: *const @This(), other: *const @This()) bool {
+            return self.bit_len == other.bit_len and std.mem.eql(u8, self.data.items, other.data.items);
+        }
+
         pub fn fromBitLen(allocator: std.mem.Allocator, bit_len: usize) !@This() {
             if (bit_len > limit) {
                 return error.tooLarge;
@@ -133,6 +137,10 @@ pub fn BitListType(comptime _limit: comptime_int) type {
         pub const chunk_depth: u8 = maxChunksToDepth(max_chunk_count);
 
         pub const default_value: Type = Type.empty;
+
+        pub fn equals(a: *const Type, b: *const Type) bool {
+            return a.equals(b);
+        }
 
         pub fn deinit(allocator: std.mem.Allocator, value: *Type) void {
             value.data.deinit(allocator);

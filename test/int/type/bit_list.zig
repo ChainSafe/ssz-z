@@ -55,3 +55,27 @@ test "BitListType" {
         try TypeTest.run(allocator, tc);
     }
 }
+
+test "BitListType equals" {
+    const allocator = std.testing.allocator;
+    const BitList = BitListType(32);
+
+    var a = try BitList.Type.fromBitLen(allocator, 8);
+    var b = try BitList.Type.fromBitLen(allocator, 8);
+    var c = try BitList.Type.fromBitLen(allocator, 7); 
+
+    defer a.deinit(allocator);
+    defer b.deinit(allocator);
+    defer c.deinit(allocator);
+
+    try a.set(allocator, 0, true);
+    try a.set(allocator, 3, true);
+
+    try b.set(allocator, 0, true);
+    try b.set(allocator, 3, true);
+
+    try c.set(allocator, 0, true);
+
+    try std.testing.expect(BitList.equals(&a, &b));
+    try std.testing.expect(!BitList.equals(&a, &c));
+}

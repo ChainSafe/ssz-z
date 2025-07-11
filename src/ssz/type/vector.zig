@@ -27,6 +27,15 @@ pub fn FixedVectorType(comptime ST: type, comptime _length: comptime_int) type {
 
         pub const default_value: Type = [_]Element.Type{Element.default_value} ** length;
 
+        pub fn equals(a: *const Type, b: *const Type) bool {
+            for (a, b) |a_elem, b_elem| {
+                if (!Element.equals(&a_elem, &b_elem)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         pub fn hashTreeRoot(value: *const Type, out: *[32]u8) !void {
             var chunks = [_][32]u8{[_]u8{0} ** 32} ** ((chunk_count + 1) / 2 * 2);
             if (comptime isBasicType(Element)) {
@@ -177,6 +186,15 @@ pub fn VariableVectorType(comptime ST: type, comptime _length: comptime_int) typ
         pub const chunk_depth: u8 = maxChunksToDepth(chunk_count);
 
         pub const default_value: Type = [_]Element.Type{Element.default_value} ** length;
+
+        pub fn equals(a: *const Type, b: *const Type) bool {
+            for (a, b) |a_elem, b_elem| {
+                if (!Element.equals(&a_elem, &b_elem)) {
+                    return false;
+                }
+            }
+            return true;
+        }
 
         pub fn deinit(allocator: std.mem.Allocator, value: *Type) void {
             for (value) |element| {

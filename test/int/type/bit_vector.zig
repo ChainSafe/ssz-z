@@ -62,3 +62,28 @@ test "BitVectorType of 512 bits" {
         try TypeTest.run(allocator, tc);
     }
 }
+
+test "BitVectorType equals" {
+    const BitVector = BitVectorType(16);
+
+    var a = BitVector.Type.empty;
+    var b = BitVector.Type.empty;
+    var c = BitVector.Type.empty;
+
+    
+    try a.set(0, true);
+    try a.set(5, true);
+    try a.set(15, true);
+
+    try b.set(0, true);
+    try b.set(5, true);
+    try b.set(15, true);
+
+    try c.set(0, true);
+    try c.set(5, true);
+    try c.set(14, true); 
+
+
+    try std.testing.expect(BitVector.equals(&a, &b));
+    try std.testing.expect(!BitVector.equals(&a, &c));
+}

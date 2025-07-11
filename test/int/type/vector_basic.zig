@@ -27,3 +27,14 @@ test "valid test for VectorBasicType" {
         try TypeTest.run(allocator, tc);
     }
 }
+
+test "FixedVectorType equals" {
+    const Vec = FixedVectorType(UintType(8), 4);
+
+    var a: Vec.Type = [_]u8{ 1, 2, 3, 4 };
+    var b: Vec.Type = [_]u8{ 1, 2, 3, 4 };
+    var c: Vec.Type = [_]u8{ 1, 2, 3, 5 };
+
+    try std.testing.expect(Vec.equals(&a, &b));
+    try std.testing.expect(!Vec.equals(&a, &c));
+}

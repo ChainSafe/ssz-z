@@ -30,6 +30,10 @@ pub fn ByteListType(comptime _limit: comptime_int) type {
 
         pub const default_value: Type = Type.empty;
 
+        pub fn equals(a: *const Type, b: *const Type) bool {
+            return std.mem.eql(u8, a.items, b.items);
+        }
+
         pub fn deinit(allocator: std.mem.Allocator, value: *Type) void {
             value.deinit(allocator);
         }

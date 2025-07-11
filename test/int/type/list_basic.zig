@@ -31,3 +31,23 @@ test "valid test for ListBasicType" {
         try TypeTest.run(allocator, tc);
     }
 }
+
+test "FixedListType equals" {
+    const allocator = std.testing.allocator;
+    const List = FixedListType(UintType(8), 32);
+
+    var a: List.Type = List.Type.empty;
+    var b: List.Type = List.Type.empty;
+    var c: List.Type = List.Type.empty;
+
+    defer a.deinit(allocator);
+    defer b.deinit(allocator);
+    defer c.deinit(allocator);
+
+    try a.appendSlice(allocator, &[_]u8{ 1, 2, 3 });
+    try b.appendSlice(allocator, &[_]u8{ 1, 2, 3 });
+    try c.appendSlice(allocator, &[_]u8{ 1, 2 }); 
+
+    try std.testing.expect(List.equals(&a, &b));
+    try std.testing.expect(!List.equals(&a, &c));
+}
