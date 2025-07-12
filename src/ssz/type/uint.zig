@@ -78,6 +78,10 @@ pub fn UintType(comptime bits: comptime_int) type {
             }
         };
 
+        pub fn serializeIntoJson(writer: anytype, in: *const Type) !void {
+            try writer.print("\"{d}\"", .{in.*});
+        }
+
         pub fn deserializeFromJson(scanner: *std.json.Scanner, out: *Type) !void {
             try switch (try scanner.next()) {
                 .string => |v| {
@@ -97,11 +101,19 @@ test "UintType - sanity" {
     _ = Uint8.serializeIntoBytes(&u, &u_buf);
     try Uint8.deserializeFromBytes(&u_buf, &u);
 
+    // Deserialize "255" into u;
+    const input_json = "\"255\"";
     const allocator = std.testing.allocator;
-    var json = std.json.Scanner.initCompleteInput(
-        allocator,
-        "\"255\"",
-    );
+    var json = std.json.Scanner.initCompleteInput(allocator, input_json);
     defer json.deinit();
     try Uint8.deserializeFromJson(&json, &u);
+
+    // Serialize u into "255"
+    var output_json = std.ArrayList(u8).init(allocator);
+    defer output_json.deinit();
+    var write_stream = std.json.writeStream(output_json.writer(), .{});
+    defer write_stream.deinit();
+    try Uint8.serializeIntoJson(&write_stream, &u);
+
+    try std.testing.expectEqualSlices(u8, input_json, output_json.items);
 }

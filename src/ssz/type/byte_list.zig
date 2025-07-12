@@ -2,7 +2,9 @@ const std = @import("std");
 const TypeKind = @import("type_kind.zig").TypeKind;
 const UintType = @import("uint.zig").UintType;
 const hexToBytes = @import("hex").hexToBytes;
-const hexByteLen = @import("hex").hexByteLen;
+const byteLenFromHex = @import("hex").byteLenFromHex;
+const hexLenFromBytes = @import("hex").hexLenFromBytes;
+const bytesToHex = @import("hex").bytesToHex;
 const merkleize = @import("hashing").merkleize;
 const mixInLength = @import("hashing").mixInLength;
 const maxChunksToDepth = @import("hashing").maxChunksToDepth;
@@ -164,13 +166,21 @@ pub fn ByteListType(comptime _limit: comptime_int) type {
             @memcpy(out.items, data);
         }
 
+        pub fn serializeIntoJson(allocator: std.mem.Allocator, writer: anytype, in: *const Type) !void {
+            const byte_str = try allocator.alloc(u8, hexLenFromBytes(in.*.items));
+            defer allocator.free(byte_str);
+
+            _ = try bytesToHex(byte_str, in.*.items);
+            try writer.print("\"{s}\"", .{byte_str});
+        }
+
         pub fn deserializeFromJson(allocator: std.mem.Allocator, source: *std.json.Scanner, out: *Type) !void {
             const hex_bytes = switch (try source.next()) {
                 .string => |v| v,
                 else => return error.InvalidJson,
             };
 
-            const hex_bytes_len = hexByteLen(hex_bytes);
+            const hex_bytes_len = byteLenFromHex(hex_bytes);
             if (hex_bytes_len > limit) {
                 return error.InvalidJson;
             }

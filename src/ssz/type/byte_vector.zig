@@ -2,7 +2,9 @@ const std = @import("std");
 const TypeKind = @import("type_kind.zig").TypeKind;
 const UintType = @import("uint.zig").UintType;
 const hexToBytes = @import("hex").hexToBytes;
-const hexByteLen = @import("hex").hexByteLen;
+const byteLenFromHex = @import("hex").byteLenFromHex;
+const hexLenFromBytes = @import("hex").hexLenFromBytes;
+const bytesToHex = @import("hex").bytesToHex;
 const merkleize = @import("hashing").merkleize;
 const maxChunksToDepth = @import("hashing").maxChunksToDepth;
 const Depth = @import("hashing").Depth;
@@ -101,13 +103,21 @@ pub fn ByteVectorType(comptime _length: comptime_int) type {
             }
         };
 
+        pub fn serializeIntoJson(allocator: std.mem.Allocator, writer: anytype, in: *const Type) !void {
+            const byte_str = try allocator.alloc(u8, hexLenFromBytes(in));
+            defer allocator.free(byte_str);
+
+            _ = try bytesToHex(byte_str, in);
+            try writer.print("\"{s}\"", .{byte_str});
+        }
+
         pub fn deserializeFromJson(source: *std.json.Scanner, out: *Type) !void {
             const hex_bytes = switch (try source.next()) {
                 .string => |v| v,
                 else => return error.InvalidJson,
             };
 
-            if (hexByteLen(hex_bytes) != length) {
+            if (byteLenFromHex(hex_bytes) != length) {
                 return error.InvalidJson;
             }
             _ = try hexToBytes(out, hex_bytes);

@@ -39,8 +39,12 @@ pub fn hasOxPrefix(hex: []const u8) bool {
     return hex[0] == '0' and hex[1] == 'x';
 }
 
-pub fn hexByteLen(hex: []const u8) usize {
+pub fn byteLenFromHex(hex: []const u8) usize {
     return if (hasOxPrefix(hex)) (hex.len - 2) / 2 else hex.len / 2;
+}
+
+pub fn hexLenFromBytes(bytes: []const u8) usize {
+    return 2 + bytes.len * 2;
 }
 
 test "rootToHex" {
