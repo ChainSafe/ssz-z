@@ -8,6 +8,7 @@ const list_composite = @import("type/list_composite.zig");
 const bit_vector = @import("type/bit_vector.zig");
 const bit_list = @import("type/bit_list.zig");
 const byte_list = @import("type/byte_list.zig");
+const tree_view = @import("type/tree_view.zig");
 
 test {
     testing.refAllDecls(list_basic);
@@ -18,4 +19,5 @@ test {
     testing.refAllDecls(bit_vector);
     testing.refAllDecls(bit_list);
     testing.refAllDecls(byte_list);
+    testing.refAllDecls(tree_view);
 }

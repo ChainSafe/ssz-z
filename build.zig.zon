@@ -15,8 +15,8 @@
             .hash = "snappy-0.1.0-n4Aaqnm2AgAAPFpcJoE2b7uCXteQ4LvhceYrwDrn02LM",
         },
         .hashtree = .{
-            .url = "git+https://github.com/chainsafe/hashtree-z#146a3f42993c2ae904158942e513b40db92cd8de",
-            .hash = "hashtree-0.1.0-sBOovrK7DABAch20W9fmE6Mse-WZ7Wly9xEUE1AJOy3y",
+            .url = "git+https://github.com/ChainSafe/hashtree-z#6b96e3f0c7c1cc935bd9cfe1cfcbce84ed5a396a",
+            .hash = "hashtree-0.1.0-sBOovqq8DACfez1ldXMSZ6qr_-yZPCbSv9d9o8G16uU3",
         },
         .zbench = .{
             .url = "git+https://github.com/hendriknielaender/zBench#d8c7dd485306b88b757d52005614ebcb0a336942",

@@ -2,7 +2,63 @@ const std = @import("std");
 const Depth = @import("hashing").Depth;
 const Node = @import("persistent_merkle_tree").Node;
 const Gindex = @import("persistent_merkle_tree").Gindex;
-const isBasicType = @import("type_kind.zig").isBasicType;
+const isBasicType = @import("type/type_kind.zig").isBasicType;
+
+pub const Data = struct {
+    root: Node.Id,
+
+    /// cached nodes for faster access of already-visited children
+    children_nodes: std.AutoHashMap(Gindex, Node.Id),
+
+    /// cached data for faster access of already-visited children
+    children_data: std.AutoHashMap(Gindex, Data),
+
+    /// whether the corresponding child node/data has changed since the last update of the root
+    changed: std.AutoArrayHashMap(Gindex, void),
+
+    pub fn init(allocator: std.mem.Allocator, pool: *Node.Pool, root: Node.Id) !Data {
+        try pool.ref(root);
+        return Data{
+            .root = root,
+            .children_nodes = std.AutoHashMap(Gindex, Node.Id).init(allocator),
+            .children_data = std.AutoHashMap(Gindex, Data).init(allocator),
+            .changed = std.AutoArrayHashMap(Gindex, void).init(allocator),
+        };
+    }
+
+    pub fn deinit(self: *Data, pool: *Node.Pool) void {
+        pool.unref(self.root);
+        self.children_nodes.deinit();
+        self.children_data.deinit();
+        self.changed.deinit();
+    }
+
+    pub fn commit(self: *Data, allocator: std.mem.Allocator, pool: *Node.Pool) !void {
+        const nodes = try allocator.alloc(Node.Id, self.changed.count());
+        defer allocator.free(nodes);
+
+        const gindices = self.changed.keys();
+        Gindex.sortAsc(gindices);
+
+        for (gindices, 0..) |gindex, i| {
+            if (self.children_data.getPtr(gindex)) |child_data| {
+                try child_data.commit(allocator, pool);
+                nodes[i] = child_data.root;
+            } else if (self.children_nodes.get(gindex)) |child_node| {
+                nodes[i] = child_node;
+            } else {
+                return error.ChildNotFound;
+            }
+        }
+
+        const new_root = try self.root.setNodes(pool, gindices, nodes);
+        try pool.ref(new_root);
+        pool.unref(self.root);
+        self.root = new_root;
+
+        self.changed.clearRetainingCapacity();
+    }
+};
 
 pub fn TreeView(comptime ST: type) type {
     comptime {
@@ -14,71 +70,15 @@ pub fn TreeView(comptime ST: type) type {
         allocator: std.mem.Allocator,
         pool: *Node.Pool,
         data: Data,
-
-        pub const Data = struct {
-            root: Node.Id,
-
-            /// cached nodes for faster access of already-visited children
-            children_nodes: std.AutoHashMap(Gindex, Node.Id),
-
-            /// cached data for faster access of already-visited children
-            children_data: std.AutoHashMap(Gindex, Data),
-
-            /// whether the corresponding child node/data has changed since the last update of the root
-            changed: std.AutoArrayHashMap(Gindex, void),
-
-            pub fn init(allocator: std.mem.Allocator, pool: *Node.Pool, root: Node.Id) Data {
-                try pool.ref(root);
-                return Data{
-                    .root = root,
-                    .children_nodes = std.AutoHashMap(Gindex, Node.Id).init(allocator),
-                    .children_data = std.AutoHashMap(Gindex, Data).init(allocator),
-                    .changed = std.AutoArrayHashMap(Gindex, void).init(allocator),
-                };
-            }
-
-            pub fn deinit(self: *Data, pool: *Node.Pool) void {
-                pool.unref(self.root);
-                self.children_nodes.deinit();
-                self.children_data.deinit();
-                self.changed.deinit();
-            }
-
-            pub fn commit(self: *Data, allocator: std.mem.Allocator, pool: *Node.Pool) !void {
-                const nodes = try self.allocator.alloc(Node.Id, self.data.changed.count());
-                defer self.allocator.free(nodes);
-
-                const gindices = self.data.changed.keys();
-                Gindex.sortAsc(gindices);
-
-                for (gindices, 0..) |gindex, i| {
-                    if (self.data.children_data.get(gindex)) |child_data| {
-                        try child_data.commit(allocator);
-                        nodes[i] = child_data.root;
-                    } else if (self.data.children_nodes.get(gindex)) |child_node| {
-                        nodes[i] = child_node;
-                    } else {
-                        return error.ChildNotFound;
-                    }
-                }
-
-                const new_root = try self.data.root.setNodes(self.pool, gindices, nodes);
-                try pool.ref(new_root);
-                pool.unref(self.root);
-                self.root = new_root;
-
-                self.changed.clearRetainingCapacity();
-            }
-        };
+        pub const SszType: type = ST;
 
         const Self = @This();
 
         pub fn init(allocator: std.mem.Allocator, pool: *Node.Pool, root: Node.Id) !Self {
-            switch (ST.kind) {}
             return Self{
                 .allocator = allocator,
                 .pool = pool,
-                .data = Data.init(allocator, pool, root),
+                .data = try Data.init(allocator, pool, root),
             };
         }
 
@@ -111,7 +111,7 @@ pub fn TreeView(comptime ST: type) type {
                 return gop.value_ptr.*;
             }
             const child_node = try self.getChildNode(gindex);
-            const child_data = try Data.init(self.allocator, child_node);
+            const child_data = try Data.init(self.allocator, self.pool, child_node);
             gop.value_ptr.* = child_data;
             return child_data;
         }
@@ -171,7 +171,7 @@ pub fn TreeView(comptime ST: type) type {
         }
 
         pub fn Field(comptime field_name: []const u8) type {
-            const ChildST = @field(ST.fields, field_name).type;
+            const ChildST = ST.getFieldType(field_name);
             if (comptime isBasicType(ChildST)) {
                 return ChildST.Type;
             } else {
@@ -179,12 +179,12 @@ pub fn TreeView(comptime ST: type) type {
             }
         }
 
-        pub fn getField(self: *Self, comptime field_name: []const u8) Field(ST, field_name) {
+        pub fn getField(self: *Self, comptime field_name: []const u8) !Field(field_name) {
             if (comptime ST.kind != .container) {
                 @compileError("getField can only be used with container types");
             }
-            const field_index = ST.getFieldIndex(field_name);
-            const ChildST = @field(ST.fields, field_name).type;
+            const field_index = comptime ST.getFieldIndex(field_name);
+            const ChildST = ST.getFieldType(field_name);
             const child_gindex = Gindex.fromDepth(ST.chunk_depth, field_index);
             if (comptime isBasicType(ChildST)) {
                 var value: ChildST.Type = undefined;
@@ -195,7 +195,7 @@ pub fn TreeView(comptime ST: type) type {
                 const child_data = try self.getChildData(child_gindex);
 
                 // TODO only update changed if the subview is mutable
-                self.data.changed.put(child_gindex, void);
+                try self.data.changed.put(child_gindex, {});
 
                 return TreeView(ChildST){
                     .allocator = self.allocator,
@@ -205,14 +205,14 @@ pub fn TreeView(comptime ST: type) type {
             }
         }
 
-        pub fn setField(self: *Self, comptime field_name: []const u8, value: Field(ST, field_name)) !void {
+        pub fn setField(self: *Self, comptime field_name: []const u8, value: Field(field_name)) !void {
             if (comptime ST.kind != .container) {
                 @compileError("setField can only be used with container types");
             }
-            const field_index = ST.getFieldIndex(field_name);
-            const ChildST = @field(ST.fields, field_name).type;
+            const field_index = comptime ST.getFieldIndex(field_name);
+            const ChildST = ST.getFieldType(field_name);
             const child_gindex = Gindex.fromDepth(ST.chunk_depth, field_index);
-            try self.data.changed.put(child_gindex, void);
+            try self.data.changed.put(child_gindex, {});
             if (comptime isBasicType(ChildST)) {
                 try self.data.children_nodes.put(
                     child_gindex,
