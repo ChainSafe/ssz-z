@@ -98,8 +98,8 @@ pub fn Hasher(comptime ST: type) type {
                     .container => {
                         @memset(scratch.chunks.items, [_]u8{0} ** 32);
                         inline for (ST.fields, 0..) |field, i| {
-                            const field_value = @field(value, field.name);
-                            try Hasher(field.type).hash(&scratch.children.?[i], &field_value, &scratch.chunks.items[i]);
+                            const field_value_ptr = &@field(value, field.name);
+                            try Hasher(field.type).hash(&scratch.children.?[i], field_value_ptr, &scratch.chunks.items[i]);
                         }
                         try h.merkleize(@ptrCast(scratch.chunks.items), ST.chunk_depth, out);
                     },
