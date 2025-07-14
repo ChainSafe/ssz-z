@@ -159,12 +159,12 @@ pub fn FixedContainerType(comptime ST: type) type {
         pub fn serializeIntoJson(allocator: std.mem.Allocator, writer: anytype, in: *const Type) !void {
             try writer.beginObject();
             inline for (fields) |field| {
-                const field_value = @field(in, field.name);
+                const field_value_ptr = &@field(in, field.name);
                 try writer.objectField(field.name);
                 if (comptime isBasicType(field.type)) {
-                    try field.type.serializeIntoJson(writer, &field_value);
+                    try field.type.serializeIntoJson(writer, field_value_ptr);
                 } else {
-                    try field.type.serializeIntoJson(allocator, writer, &field_value);
+                    try field.type.serializeIntoJson(allocator, writer, field_value_ptr);
                 }
             }
             try writer.endObject();
@@ -518,12 +518,12 @@ pub fn VariableContainerType(comptime ST: type) type {
         pub fn serializeIntoJson(allocator: std.mem.Allocator, writer: anytype, in: *const Type) !void {
             try writer.beginObject();
             inline for (fields) |field| {
-                const field_value = @field(in, field.name);
+                const field_value_ptr = &@field(in, field.name);
                 try writer.objectField(field.name);
                 if (comptime isBasicType(field.type)) {
-                    try field.type.serializeIntoJson(writer, &field_value);
+                    try field.type.serializeIntoJson(writer, field_value_ptr);
                 } else {
-                    try field.type.serializeIntoJson(allocator, writer, &field_value);
+                    try field.type.serializeIntoJson(allocator, writer, field_value_ptr);
                 }
             }
             try writer.endObject();
