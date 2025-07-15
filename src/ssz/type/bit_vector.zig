@@ -179,7 +179,7 @@ pub fn BitVectorType(comptime _length: comptime_int) type {
                 return error.invalidLength;
             }
             // ensure trailing zeros for non-byte-aligned lengths
-            if (length % 8 != 0 and @clz(out.data[fixed_size - 1]) >= @clz(@as(u8, length / 8))) {
+            if (length % 8 != 0 and @clz(out.data[fixed_size - 1]) < 8 - length % 8) {
                 return error.trailingData;
             }
         }
