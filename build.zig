@@ -85,6 +85,7 @@ pub fn build(b: *std.Build) void {
     });
 
     const install_exe_download_spec_tests = b.addInstallArtifact(exe_download_spec_tests, .{});
+
     const tls_install_exe_download_spec_tests = b.step("build-exe:download_spec_tests", "Install the download_spec_tests executable");
     tls_install_exe_download_spec_tests.dependOn(&install_exe_download_spec_tests.step);
     b.getInstallStep().dependOn(&install_exe_download_spec_tests.step);
@@ -107,6 +108,7 @@ pub fn build(b: *std.Build) void {
     });
 
     const install_exe_write_generic_spec_tests = b.addInstallArtifact(exe_write_generic_spec_tests, .{});
+
     const tls_install_exe_write_generic_spec_tests = b.step("build-exe:write_generic_spec_tests", "Install the write_generic_spec_tests executable");
     tls_install_exe_write_generic_spec_tests.dependOn(&install_exe_write_generic_spec_tests.step);
     b.getInstallStep().dependOn(&install_exe_write_generic_spec_tests.step);
@@ -129,6 +131,7 @@ pub fn build(b: *std.Build) void {
     });
 
     const install_exe_write_static_spec_tests = b.addInstallArtifact(exe_write_static_spec_tests, .{});
+
     const tls_install_exe_write_static_spec_tests = b.step("build-exe:write_static_spec_tests", "Install the write_static_spec_tests executable");
     tls_install_exe_write_static_spec_tests.dependOn(&install_exe_write_static_spec_tests.step);
     b.getInstallStep().dependOn(&install_exe_write_static_spec_tests.step);
@@ -151,6 +154,7 @@ pub fn build(b: *std.Build) void {
     });
 
     const install_exe_bench_attestation = b.addInstallArtifact(exe_bench_attestation, .{});
+
     const tls_install_exe_bench_attestation = b.step("build-exe:bench_attestation", "Install the bench_attestation executable");
     tls_install_exe_bench_attestation.dependOn(&install_exe_bench_attestation.step);
     b.getInstallStep().dependOn(&install_exe_bench_attestation.step);
@@ -173,6 +177,7 @@ pub fn build(b: *std.Build) void {
     });
 
     const install_exe_bench_block = b.addInstallArtifact(exe_bench_block, .{});
+
     const tls_install_exe_bench_block = b.step("build-exe:bench_block", "Install the bench_block executable");
     tls_install_exe_bench_block.dependOn(&install_exe_bench_block.step);
     b.getInstallStep().dependOn(&install_exe_bench_block.step);
@@ -195,6 +200,7 @@ pub fn build(b: *std.Build) void {
     });
 
     const install_exe_bench_state = b.addInstallArtifact(exe_bench_state, .{});
+
     const tls_install_exe_bench_state = b.step("build-exe:bench_state", "Install the bench_state executable");
     tls_install_exe_bench_state.dependOn(&install_exe_bench_state.step);
     b.getInstallStep().dependOn(&install_exe_bench_state.step);
@@ -217,6 +223,7 @@ pub fn build(b: *std.Build) void {
     });
 
     const install_exe_bench_gindex = b.addInstallArtifact(exe_bench_gindex, .{});
+
     const tls_install_exe_bench_gindex = b.step("build-exe:bench_gindex", "Install the bench_gindex executable");
     tls_install_exe_bench_gindex.dependOn(&install_exe_bench_gindex.step);
     b.getInstallStep().dependOn(&install_exe_bench_gindex.step);
@@ -239,6 +246,7 @@ pub fn build(b: *std.Build) void {
     });
 
     const install_exe_bench_node = b.addInstallArtifact(exe_bench_node, .{});
+
     const tls_install_exe_bench_node = b.step("build-exe:bench_node", "Install the bench_node executable");
     tls_install_exe_bench_node.dependOn(&install_exe_bench_node.step);
     b.getInstallStep().dependOn(&install_exe_bench_node.step);
@@ -261,6 +269,7 @@ pub fn build(b: *std.Build) void {
     });
 
     const install_exe_bench_hashing = b.addInstallArtifact(exe_bench_hashing, .{});
+
     const tls_install_exe_bench_hashing = b.step("build-exe:bench_hashing", "Install the bench_hashing executable");
     tls_install_exe_bench_hashing.dependOn(&install_exe_bench_hashing.step);
     b.getInstallStep().dependOn(&install_exe_bench_hashing.step);
@@ -269,23 +278,6 @@ pub fn build(b: *std.Build) void {
     if (b.args) |args| run_exe_bench_hashing.addArgs(args);
     const tls_run_exe_bench_hashing = b.step("run:bench_hashing", "Run the bench_hashing executable");
     tls_run_exe_bench_hashing.dependOn(&run_exe_bench_hashing.step);
-
-    const module_types = b.createModule(.{
-        .root_source_file = b.path("codegen:types"),
-        .target = target,
-        .optimize = optimize,
-    });
-    b.modules.put(b.dupe("types"), module_types) catch @panic("OOM");
-
-    const lib_types = b.addLibrary(.{
-        .name = "types",
-        .root_module = module_types,
-    });
-
-    const install_lib_types = b.addInstallArtifact(lib_types, .{});
-    const tls_install_lib_types = b.step("build-lib:types", "Install the types library");
-    tls_install_lib_types.dependOn(&install_lib_types.step);
-    b.getInstallStep().dependOn(&install_lib_types.step);
 
     const tls_run_test = b.step("test", "Run all tests");
 
@@ -498,20 +490,6 @@ pub fn build(b: *std.Build) void {
     const tls_run_test_bench_hashing = b.step("test:bench_hashing", "Run the bench_hashing test");
     tls_run_test_bench_hashing.dependOn(&run_test_bench_hashing.step);
     tls_run_test.dependOn(&run_test_bench_hashing.step);
-
-    const test_types = b.addTest(.{
-        .name = "types",
-        .root_module = module_types,
-        .filters = &[_][]const u8{},
-    });
-    const install_test_types = b.addInstallArtifact(test_types, .{});
-    const tls_install_test_types = b.step("build-test:types", "Install the types test");
-    tls_install_test_types.dependOn(&install_test_types.step);
-
-    const run_test_types = b.addRunArtifact(test_types);
-    const tls_run_test_types = b.step("test:types", "Run the types test");
-    tls_run_test_types.dependOn(&run_test_types.step);
-    tls_run_test.dependOn(&run_test_types.step);
 
     const module_int = b.createModule(.{
         .root_source_file = b.path("test/int/root.zig"),

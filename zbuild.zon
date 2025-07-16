@@ -135,13 +135,7 @@
         //     },
         // },
     },
-    .libraries = .{
-        .types = .{
-            .root_module = .{
-                .root_source_file = "codegen:types",
-            },
-        },
-    },
+    .libraries = .{},
     .tests = .{
         .int = .{
             .root_module = .{
