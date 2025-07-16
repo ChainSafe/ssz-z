@@ -140,7 +140,7 @@
         .int = .{
             .root_module = .{
                 .root_source_file = "test/int/root.zig",
-                .imports = .{ .hex, .ssz },
+                .imports = .{ .hex, .ssz, .persistent_merkle_tree },
             },
             .filters = .{},
         },

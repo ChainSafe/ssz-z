@@ -497,7 +497,6 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     b.modules.put(b.dupe("int"), module_int) catch @panic("OOM");
-    module_int.addImport("persistent_merkle_tree", module_persistent_merkle_tree);
 
     const test_int = b.addTest(.{
         .name = "int",
@@ -606,6 +605,7 @@ pub fn build(b: *std.Build) void {
 
     module_int.addImport("hex", module_hex);
     module_int.addImport("ssz", module_ssz);
+    module_int.addImport("persistent_merkle_tree", module_persistent_merkle_tree);
 
     module_generic_spec_tests.addImport("hex", module_hex);
     module_generic_spec_tests.addImport("snappy", dep_snappy.module("snappy"));
