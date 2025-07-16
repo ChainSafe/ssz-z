@@ -168,8 +168,6 @@ pub fn validTestCase(comptime ST: type, gpa: Allocator, path: std.fs.Dir, meta_f
 
     try parseYamlToJson(allocator, value_yaml.docs.items[0], &write_stream);
 
-    // std.debug.print("{s}\n", .{@as([]const u8, expected_json.items)});
-
     // read expected value
 
     var value_expected = try allocator.create(ST.Type);
