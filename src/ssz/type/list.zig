@@ -113,6 +113,7 @@ pub fn FixedListType(comptime ST: type, comptime _limit: comptime_int) type {
                 }
 
                 _ = try out.addOne(allocator);
+                out.items[i] = Element.default_value;
                 try Element.deserializeFromJson(source, &out.items[i]);
             }
             return error.invalidLength;
@@ -494,6 +495,7 @@ pub fn VariableListType(comptime ST: type, comptime _limit: comptime_int) type {
                 }
 
                 _ = try out.addOne(allocator);
+                out.items[i] = Element.default_value;
                 try Element.deserializeFromJson(allocator, source, &out.items[i]);
             }
             return error.invalidLength;
