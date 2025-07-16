@@ -68,10 +68,11 @@
             .root_source_file = "src/consensus_types/root.zig",
             .imports = .{ .build_options, .ssz },
         },
-        .bun_ffi = .{
-            .root_source_file = "src/bun_ffi/root.zig",
-            .imports = .{ .build_options, .persistent_merkle_tree, .ssz, .consensus_types },
-        },
+        //TODO(bing): reintroduce when bun-ffi generation is fixed
+        //.bun_ffi = .{
+        //    .root_source_file = "src/bun_ffi/root.zig",
+        //    .imports = .{ .build_options, .persistent_merkle_tree, .ssz, .consensus_types },
+        //},
     },
     .executables = .{
         .download_spec_tests = .{
@@ -128,6 +129,7 @@
                 .imports = .{ .hashing, .zbench },
             },
         },
+        //TODO(bing): reintroduce when bun-ffi generation is fixed
         // .write_bun_ffi = .{
         //     .root_module = .{
         //         .root_source_file = "src/bun_ffi/write_types.zig",
