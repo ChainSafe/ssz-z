@@ -570,6 +570,7 @@ pub fn build(b: *std.Build) void {
 
     module_int.addImport("hex", module_hex);
     module_int.addImport("ssz", module_ssz);
+    module_int.addImport("persistent_merkle_tree", module_persistent_merkle_tree);
 
     module_generic_spec_tests.addImport("hex", module_hex);
     module_generic_spec_tests.addImport("snappy", dep_snappy.module("snappy"));
