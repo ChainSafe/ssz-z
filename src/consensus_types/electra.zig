@@ -235,7 +235,7 @@ pub const BlindedBeaconBlock = ssz.VariableContainerType(struct {
     body: BlindedBeaconBlockBody,
 });
 
-pub const SignedBlindedBeaconBlock = ssz.FixedContainerType(struct {
+pub const SignedBlindedBeaconBlock = ssz.VariableContainerType(struct {
     message: BlindedBeaconBlock,
     signature: p.BLSSignature,
 });
