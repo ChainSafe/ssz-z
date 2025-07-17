@@ -10,7 +10,13 @@ pub const deneb = @import("deneb.zig");
 pub const electra = @import("electra.zig");
 
 test {
+    testing.refAllDecls(primitive);
     testing.refAllDecls(phase0);
+    testing.refAllDecls(altair);
+    testing.refAllDecls(bellatrix);
+    testing.refAllDecls(capella);
+    testing.refAllDecls(deneb);
+    testing.refAllDecls(electra);
 }
 
 const src = blk: {
