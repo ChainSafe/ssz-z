@@ -211,6 +211,35 @@ pub const SignedBeaconBlockHeader = ssz.FixedContainerType(struct {
     signature: p.BLSSignature,
 });
 
+pub const BlindedBeaconBlockBody = ssz.VariableContainerType(struct {
+    randao_reveal: p.BLSSignature,
+    eth1_data: Eth1Data,
+    graffiti: p.Bytes32,
+    proposer_slashings: ssz.FixedListType(ProposerSlashing, preset.MAX_PROPOSER_SLASHINGS),
+    attester_slashings: ssz.VariableListType(AttesterSlashing, preset.MAX_ATTESTER_SLASHINGS),
+    attestations: ssz.VariableListType(Attestation, preset.MAX_ATTESTATIONS_ELECTRA),
+    deposits: ssz.FixedListType(Deposit, preset.MAX_DEPOSITS),
+    voluntary_exits: ssz.FixedListType(SignedVoluntaryExit, preset.MAX_VOLUNTARY_EXITS),
+    sync_aggregate: SyncAggregate,
+    execution_payload: ExecutionPayloadHeader,
+    bls_to_execution_changes: ssz.FixedListType(SignedBLSToExecutionChange, preset.MAX_BLS_TO_EXECUTION_CHANGES),
+    blob_kzg_commitments: ssz.FixedListType(p.KZGCommitment, preset.MAX_BLOB_COMMITMENTS_PER_BLOCK),
+    execution_requests: ExecutionRequests,
+});
+
+pub const BlindedBeaconBlock = ssz.VariableContainerType(struct {
+    slot: p.Slot,
+    proposer_index: p.ValidatorIndex,
+    parent_root: p.Root,
+    state_root: p.Root,
+    body: BlindedBeaconBlockBody,
+});
+
+pub const SignedBlindedBeaconBlock = ssz.FixedContainerType(struct {
+    message: BlindedBeaconBlock,
+    signature: p.BLSSignature,
+});
+
 pub const BeaconState = ssz.VariableContainerType(struct {
     genesis_time: p.Uint64,
     genesis_validators_root: p.Root,
