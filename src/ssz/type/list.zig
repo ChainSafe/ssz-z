@@ -29,6 +29,18 @@ pub fn FixedListType(comptime ST: type, comptime _limit: comptime_int) type {
 
         pub const default_value: Type = Type.empty;
 
+        pub fn equals(a: *const Type, b: *const Type) bool {
+            if (a.items.len != b.items.len) {
+                return false;
+            }
+            for (a.items, b.items) |a_elem, b_elem| {
+                if (!Element.equals(&a_elem, &b_elem)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         pub fn deinit(allocator: std.mem.Allocator, value: *Type) void {
             value.deinit(allocator);
         }
@@ -269,6 +281,18 @@ pub fn VariableListType(comptime ST: type, comptime _limit: comptime_int) type {
         pub const chunk_depth: u8 = maxChunksToDepth(max_chunk_count);
 
         pub const default_value: Type = Type.empty;
+
+        pub fn equals(a: *const Type, b: *const Type) bool {
+            if (a.items.len != b.items.len) {
+                return false;
+            }
+            for (a.items, b.items) |a_elem, b_elem| {
+                if (!Element.equals(&a_elem, &b_elem)) {
+                    return false;
+                }
+            }
+            return true;
+        }
 
         pub fn deinit(allocator: std.mem.Allocator, value: *Type) void {
             for (value.items) |element| {

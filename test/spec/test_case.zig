@@ -167,6 +167,9 @@ pub fn validTestCase(comptime ST: type, gpa: Allocator, path: std.fs.Dir, meta_f
     }
     try std.testing.expectEqualDeep(&value_expected, &value_actual);
 
+    // test equals function
+    try std.testing.expect(ST.equals(value_expected, value_actual));
+
     // test merkleization
 
     var root_actual_oneshot: [32]u8 = undefined;

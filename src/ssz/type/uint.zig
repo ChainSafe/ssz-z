@@ -20,6 +20,10 @@ pub fn UintType(comptime bits: comptime_int) type {
 
         pub const default_value: Type = 0;
 
+        pub fn equals(a: *const Type, b: *const Type) bool {
+            return a.* == b.*;
+        }
+
         pub fn hashTreeRoot(value: *const Type, out: *[32]u8) !void {
             @memset(out, 0);
             std.mem.writeInt(Type, out[0..fixed_size], value.*, .little);

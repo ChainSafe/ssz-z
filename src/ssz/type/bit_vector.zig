@@ -17,6 +17,10 @@ pub fn BitVector(comptime _length: comptime_int) type {
             .data = [_]u8{0} ** byte_len,
         };
 
+        pub fn equals(self: *const @This(), other: *const @This()) bool {
+            return std.mem.eql(u8, &self.data, &other.data);
+        }
+
         pub fn fromBoolArray(bools: [length]bool) !@This() {
             var bv = empty;
             for (bools, 0..) |bit, i| {
@@ -90,6 +94,10 @@ pub fn BitVectorType(comptime _length: comptime_int) type {
         pub const chunk_depth: u8 = maxChunksToDepth(chunk_count);
 
         pub const default_value: Type = Type.empty;
+
+        pub fn equals(a: *const Type, b: *const Type) bool {
+            return a.equals(b);
+        }
 
         pub fn hashTreeRoot(value: *const Type, out: *[32]u8) !void {
             var chunks = [_][32]u8{[_]u8{0} ** 32} ** ((chunk_count + 1) / 2 * 2);
