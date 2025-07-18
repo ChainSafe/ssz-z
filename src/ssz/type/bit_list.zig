@@ -52,8 +52,8 @@ pub fn BitList(comptime limit: comptime_int) type {
             }
 
             const byte_idx = bit_index / 8;
-            const offset_in_byte = bit_index % 8;
-            const mask = 1 << offset_in_byte;
+            const offset_in_byte: u3 = @intCast(bit_index % 8);
+            const mask = @as(u8, 1) << offset_in_byte;
             return (self.data.items[byte_idx] & mask) == mask;
         }
 
@@ -382,4 +382,6 @@ test "BitListType - sanity" {
 
     _ = Bits.serializeIntoBytes(&b, b_buf);
     try Bits.deserializeFromBytes(allocator, b_buf, &b);
+
+    try std.testing.expect(try b.get(0) == false);
 }
