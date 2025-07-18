@@ -413,7 +413,6 @@ test "BitListType - sanity" {
 
     _ = Bits.serializeIntoBytes(&b, b_buf);
     try Bits.deserializeFromBytes(allocator, b_buf, &b);
-
     try std.testing.expect(try b.get(0) == false);
 }
 
@@ -429,4 +428,5 @@ test "BitListType - sanity with bools" {
     try b.toBoolSlice(&actual_bools);
 
     try std.testing.expectEqualSlices(bool, &expected_bools, actual_bools);
+    try std.testing.expect(try b.get(0) == false);
 }
