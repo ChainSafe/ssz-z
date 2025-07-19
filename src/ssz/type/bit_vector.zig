@@ -3,6 +3,8 @@ const merkleize = @import("hashing").merkleize;
 const TypeKind = @import("type_kind.zig").TypeKind;
 const BoolType = @import("bool.zig").BoolType;
 const hexToBytes = @import("hex").hexToBytes;
+const hexLenFromBytes = @import("hex").hexLenFromBytes;
+const bytesToHex = @import("hex").bytesToHex;
 const maxChunksToDepth = @import("hashing").maxChunksToDepth;
 const Node = @import("persistent_merkle_tree").Node;
 
@@ -168,6 +170,14 @@ pub fn BitVectorType(comptime _length: comptime_int) type {
                 return try Node.fillWithContents(pool, &nodes, chunk_depth, false);
             }
         };
+
+        pub fn serializeIntoJson(writer: anytype, in: *const Type) !void {
+            const bytes = in.*.data;
+            var byte_str: [2 + 2 * byte_length]u8 = undefined;
+
+            _ = try bytesToHex(&byte_str, &bytes);
+            try writer.print("\"{s}\"", .{byte_str});
+        }
 
         pub fn deserializeFromJson(source: *std.json.Scanner, out: *Type) !void {
             const hex_bytes = switch (try source.next()) {

@@ -76,6 +76,10 @@ pub fn BoolType() type {
             }
         };
 
+        pub fn serializeIntoJson(writer: anytype, in: *const Type) !void {
+            try writer.write(in.*);
+        }
+
         pub fn deserializeFromJson(scanner: *std.json.Scanner, out: *Type) !void {
             switch (try scanner.next()) {
                 .true => out.* = true,
@@ -84,4 +88,27 @@ pub fn BoolType() type {
             }
         }
     };
+}
+
+test "BoolType - sanity" {
+    const Bool = BoolType();
+
+    var b: Bool.Type = undefined;
+
+    const input_json = "true";
+    const allocator = std.testing.allocator;
+
+    // Deserialize
+    var json = std.json.Scanner.initCompleteInput(allocator, input_json);
+    defer json.deinit();
+    try Bool.deserializeFromJson(&json, &b);
+
+    // Serialize
+    var output_json = std.ArrayList(u8).init(allocator);
+    defer output_json.deinit();
+    var write_stream = std.json.writeStream(output_json.writer(), .{});
+    defer write_stream.deinit();
+    try Bool.serializeIntoJson(&write_stream, &b);
+
+    try std.testing.expectEqualSlices(u8, input_json, output_json.items);
 }

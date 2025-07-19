@@ -98,6 +98,35 @@ pub fn parseYaml(comptime ST: type, allocator: Allocator, y: yaml.Yaml, out: *ST
     }
 }
 
+pub fn parseYamlToJson(allocator: Allocator, y: yaml.Yaml.Value, writer: anytype) !void {
+    switch (y) {
+        .empty => return,
+        .scalar => |scalar| {
+            const isBool = std.mem.eql(u8, scalar, "true") or std.mem.eql(u8, scalar, "false");
+
+            return if (isBool)
+                try writer.print("{s}", .{scalar})
+            else
+                try writer.print("\"{s}\"", .{scalar});
+        },
+        .list => |list| {
+            try writer.beginArray();
+            for (list) |elem| {
+                try parseYamlToJson(allocator, elem, writer);
+            }
+            try writer.endArray();
+        },
+        .map => |map| {
+            try writer.beginObject();
+            for (map.keys(), map.values()) |key, value| {
+                try writer.objectField(key);
+                try parseYamlToJson(allocator, value, writer);
+            }
+            try writer.endObject();
+        },
+    }
+}
+
 pub fn validTestCase(comptime ST: type, gpa: Allocator, path: std.fs.Dir, meta_file_name: []const u8) !void {
     var arena = std.heap.ArenaAllocator.init(gpa);
     defer arena.deinit();
@@ -118,7 +147,7 @@ pub fn validTestCase(comptime ST: type, gpa: Allocator, path: std.fs.Dir, meta_f
 
     const root_expected = try hex.hexToRoot(meta.root[0..66]);
 
-    // read expected value
+    // read yaml
 
     const value_file = try path.openFile("value.yaml", .{});
     defer value_file.close();
@@ -129,6 +158,18 @@ pub fn validTestCase(comptime ST: type, gpa: Allocator, path: std.fs.Dir, meta_f
         value_yaml.parse_errors.renderToStdErr(.{ .ttyconf = .no_color });
         return e;
     };
+
+    // read expected json
+
+    var expected_json = std.ArrayList(u8).init(allocator);
+    defer expected_json.deinit();
+    var write_stream = std.json.writeStream(expected_json.writer(), .{});
+    defer write_stream.deinit();
+
+    try parseYamlToJson(allocator, value_yaml.docs.items[0], &write_stream);
+
+    // read expected value
+
     var value_expected = try allocator.create(ST.Type);
     value_expected.* = ST.default_value;
     try parseYaml(ST, allocator, value_yaml, value_expected);
@@ -143,29 +184,67 @@ pub fn validTestCase(comptime ST: type, gpa: Allocator, path: std.fs.Dir, meta_f
     const serialized_len = try snappy.uncompress(serialized_snappy_bytes, serialized_buf);
     const serialized_expected = serialized_buf[0..serialized_len];
 
-    // test serialization
+    // test serialization - value to ssz
 
-    const serialized_actual = try allocator.alloc(
-        u8,
-        if (comptime ssz.isFixedType(ST)) ST.fixed_size else ST.serializedSize(value_expected),
-    );
-    const serialized_actual_size = ST.serializeIntoBytes(value_expected, serialized_actual);
-    try std.testing.expectEqual(serialized_expected.len, serialized_actual_size);
-    try std.testing.expectEqualSlices(u8, serialized_expected, serialized_actual);
-
-    // test deserialization
-
-    try ST.serialized.validate(serialized_expected);
-
-    var value_actual = try allocator.create(ST.Type);
-    value_actual.* = ST.default_value;
-
-    if (comptime ssz.isFixedType(ST)) {
-        try ST.deserializeFromBytes(serialized_expected, value_actual);
-    } else {
-        try ST.deserializeFromBytes(allocator, serialized_expected, value_actual);
+    {
+        const serialized_actual = try allocator.alloc(
+            u8,
+            if (comptime ssz.isFixedType(ST)) ST.fixed_size else ST.serializedSize(value_expected),
+        );
+        const serialized_actual_size = ST.serializeIntoBytes(value_expected, serialized_actual);
+        try std.testing.expectEqual(serialized_expected.len, serialized_actual_size);
+        try std.testing.expectEqualSlices(u8, serialized_expected, serialized_actual);
     }
-    try std.testing.expectEqualDeep(&value_expected, &value_actual);
+
+    // test deserialization - ssz to value
+
+    {
+        try ST.serialized.validate(serialized_expected);
+
+        var value_actual = try allocator.create(ST.Type);
+        value_actual.* = ST.default_value;
+
+        if (comptime ssz.isFixedType(ST)) {
+            try ST.deserializeFromBytes(serialized_expected, value_actual);
+        } else {
+            try ST.deserializeFromBytes(allocator, serialized_expected, value_actual);
+        }
+        try std.testing.expectEqualDeep(&value_expected, &value_actual);
+    }
+
+    // test serialization - value to json
+
+    {
+        var serialized_actual = std.ArrayList(u8).init(allocator);
+        defer serialized_actual.deinit();
+        var write_stream_actual = std.json.writeStream(serialized_actual.writer(), .{});
+        defer write_stream_actual.deinit();
+
+        if (comptime ssz.isFixedType(ST)) {
+            try ST.serializeIntoJson(&write_stream_actual, value_expected);
+        } else {
+            try ST.serializeIntoJson(allocator, &write_stream_actual, value_expected);
+        }
+
+        try std.testing.expectEqualSlices(u8, expected_json.items, serialized_actual.items);
+    }
+
+    // test deserialization - json to value
+    {
+        var value_actual = try allocator.create(ST.Type);
+        value_actual.* = ST.default_value;
+
+        var scanner = std.json.Scanner.initCompleteInput(allocator, expected_json.items);
+        defer scanner.deinit();
+
+        if (comptime ssz.isFixedType(ST)) {
+            try ST.deserializeFromJson(&scanner, value_actual);
+        } else {
+            try ST.deserializeFromJson(allocator, &scanner, value_actual);
+        }
+
+        try std.testing.expectEqualDeep(&value_expected, &value_actual);
+    }
 
     // test merkleization
 

@@ -84,6 +84,14 @@ pub fn FixedListType(comptime ST: type, comptime _limit: comptime_int) type {
             }
         }
 
+        pub fn serializeIntoJson(_: std.mem.Allocator, writer: anytype, in: *const Type) !void {
+            try writer.beginArray();
+            for (in.items) |element| {
+                try Element.serializeIntoJson(writer, &element);
+            }
+            try writer.endArray();
+        }
+
         pub fn deserializeFromJson(allocator: std.mem.Allocator, source: *std.json.Scanner, out: *Type) !void {
             // start array token "["
             switch (try source.next()) {
@@ -101,6 +109,7 @@ pub fn FixedListType(comptime ST: type, comptime _limit: comptime_int) type {
                 }
 
                 _ = try out.addOne(allocator);
+                out.items[i] = Element.default_value;
                 try Element.deserializeFromJson(source, &out.items[i]);
             }
             return error.invalidLength;
@@ -315,6 +324,14 @@ pub fn VariableListType(comptime ST: type, comptime _limit: comptime_int) type {
             return variable_index;
         }
 
+        pub fn serializeIntoJson(allocator: std.mem.Allocator, writer: anytype, in: *const Type) !void {
+            try writer.beginArray();
+            for (in.items) |element| {
+                try Element.serializeIntoJson(allocator, writer, &element);
+            }
+            try writer.endArray();
+        }
+
         pub fn deserializeFromBytes(allocator: std.mem.Allocator, data: []const u8, out: *Type) !void {
             const offsets = try readVariableOffsets(allocator, data);
             defer allocator.free(offsets);
@@ -470,6 +487,7 @@ pub fn VariableListType(comptime ST: type, comptime _limit: comptime_int) type {
                 }
 
                 _ = try out.addOne(allocator);
+                out.items[i] = Element.default_value;
                 try Element.deserializeFromJson(allocator, source, &out.items[i]);
             }
             return error.invalidLength;

@@ -43,6 +43,15 @@ pub fn typeTest(comptime ST: type) type {
                 defer scanner.deinit();
 
                 try ST.deserializeFromJson(&scanner, &json_value);
+
+                // serialize to json
+                var output_json = std.ArrayList(u8).init(allocator);
+                defer output_json.deinit();
+                var write_stream = std.json.writeStream(output_json.writer(), .{});
+                defer write_stream.deinit();
+
+                try ST.serializeIntoJson(&write_stream, &json_value);
+                try std.testing.expectEqualSlices(u8, tc.json, output_json.items);
             } else {
                 // deserialize
                 var value = ST.default_value;
@@ -71,6 +80,15 @@ pub fn typeTest(comptime ST: type) type {
                 defer scanner.deinit();
 
                 try ST.deserializeFromJson(allocator, &scanner, &json_value);
+
+                // serialize to json
+                var output_json = std.ArrayList(u8).init(allocator);
+                defer output_json.deinit();
+                var write_stream = std.json.writeStream(output_json.writer(), .{});
+                defer write_stream.deinit();
+
+                try ST.serializeIntoJson(allocator, &write_stream, &json_value);
+                try std.testing.expectEqualSlices(u8, tc.json, output_json.items);
             }
         }
     };

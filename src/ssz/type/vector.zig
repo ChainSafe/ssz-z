@@ -137,6 +137,14 @@ pub fn FixedVectorType(comptime ST: type, comptime _length: comptime_int) type {
             }
         };
 
+        pub fn serializeIntoJson(writer: anytype, in: *const Type) !void {
+            try writer.beginArray();
+            for (in) |element| {
+                try Element.serializeIntoJson(writer, &element);
+            }
+            try writer.endArray();
+        }
+
         pub fn deserializeFromJson(source: *std.json.Scanner, out: *Type) !void {
             // start array token "["
             switch (try source.next()) {
@@ -280,6 +288,14 @@ pub fn VariableVectorType(comptime ST: type, comptime _length: comptime_int) typ
                 return try Node.fillWithContents(pool, &nodes, chunk_depth, false);
             }
         };
+
+        pub fn serializeIntoJson(allocator: std.mem.Allocator, writer: anytype, in: *const Type) !void {
+            try writer.beginArray();
+            for (in) |element| {
+                try Element.serializeIntoJson(allocator, writer, &element);
+            }
+            try writer.endArray();
+        }
 
         pub fn deserializeFromJson(allocator: std.mem.Allocator, source: *std.json.Scanner, out: *Type) !void {
             // start array token "["
