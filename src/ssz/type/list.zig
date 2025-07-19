@@ -84,14 +84,10 @@ pub fn FixedListType(comptime ST: type, comptime _limit: comptime_int) type {
             }
         }
 
-        pub fn serializeIntoJson(allocator: std.mem.Allocator, writer: anytype, in: *const Type) !void {
+        pub fn serializeIntoJson(_: std.mem.Allocator, writer: anytype, in: *const Type) !void {
             try writer.beginArray();
             for (in.items) |element| {
-                if (comptime isBasicType(Element)) {
-                    try Element.serializeIntoJson(writer, &element);
-                } else {
-                    try Element.serializeIntoJson(allocator, writer, &element);
-                }
+                try Element.serializeIntoJson(writer, &element);
             }
             try writer.endArray();
         }
@@ -331,11 +327,7 @@ pub fn VariableListType(comptime ST: type, comptime _limit: comptime_int) type {
         pub fn serializeIntoJson(allocator: std.mem.Allocator, writer: anytype, in: *const Type) !void {
             try writer.beginArray();
             for (in.items) |element| {
-                if (comptime isBasicType(Element)) {
-                    try Element.serializeIntoJson(writer, &element);
-                } else {
-                    try Element.serializeIntoJson(allocator, writer, &element);
-                }
+                try Element.serializeIntoJson(allocator, writer, &element);
             }
             try writer.endArray();
         }

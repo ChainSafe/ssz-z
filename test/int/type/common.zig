@@ -1,7 +1,6 @@
 const std = @import("std");
 const hexToBytes = @import("hex").hexToBytes;
 const isFixedType = @import("ssz").isFixedType;
-const isBasicType = @import("ssz").isBasicType;
 
 pub const TypeTestCase = struct {
     id: []const u8,
@@ -50,12 +49,8 @@ pub fn typeTest(comptime ST: type) type {
                 defer output_json.deinit();
                 var write_stream = std.json.writeStream(output_json.writer(), .{});
                 defer write_stream.deinit();
-                if (comptime isBasicType(ST)) {
-                    try ST.serializeIntoJson(&write_stream, &json_value);
-                } else {
-                    try ST.serializeIntoJson(allocator, &write_stream, &json_value);
-                }
 
+                try ST.serializeIntoJson(&write_stream, &json_value);
                 try std.testing.expectEqualSlices(u8, tc.json, output_json.items);
             } else {
                 // deserialize
@@ -91,12 +86,8 @@ pub fn typeTest(comptime ST: type) type {
                 defer output_json.deinit();
                 var write_stream = std.json.writeStream(output_json.writer(), .{});
                 defer write_stream.deinit();
-                if (comptime isBasicType(ST)) {
-                    try ST.serializeIntoJson(&write_stream, &json_value);
-                } else {
-                    try ST.serializeIntoJson(allocator, &write_stream, &json_value);
-                }
 
+                try ST.serializeIntoJson(allocator, &write_stream, &json_value);
                 try std.testing.expectEqualSlices(u8, tc.json, output_json.items);
             }
         }

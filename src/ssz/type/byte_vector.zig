@@ -103,11 +103,10 @@ pub fn ByteVectorType(comptime _length: comptime_int) type {
             }
         };
 
-        pub fn serializeIntoJson(allocator: std.mem.Allocator, writer: anytype, in: *const Type) !void {
-            const byte_str = try allocator.alloc(u8, hexLenFromBytes(in));
-            defer allocator.free(byte_str);
+        pub fn serializeIntoJson(writer: anytype, in: *const Type) !void {
+            var byte_str: [2 + 2 * fixed_size]u8 = undefined;
 
-            _ = try bytesToHex(byte_str, in);
+            _ = try bytesToHex(&byte_str, in);
             try writer.print("\"{s}\"", .{byte_str});
         }
 

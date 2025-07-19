@@ -220,7 +220,7 @@ pub fn validTestCase(comptime ST: type, gpa: Allocator, path: std.fs.Dir, meta_f
         var write_stream_actual = std.json.writeStream(serialized_actual.writer(), .{});
         defer write_stream_actual.deinit();
 
-        if (comptime ssz.isBasicType(ST)) {
+        if (comptime ssz.isFixedType(ST)) {
             try ST.serializeIntoJson(&write_stream_actual, value_expected);
         } else {
             try ST.serializeIntoJson(allocator, &write_stream_actual, value_expected);
