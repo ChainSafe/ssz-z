@@ -65,10 +65,21 @@ pub fn FixedContainerType(comptime ST: type) type {
             break :blk out;
         };
 
-        pub fn clone(_: std.mem.Allocator, value: *const Type) !Type {
+        // pub fn clone(_: std.mem.Allocator, value: *const Type) !Type {
+        //     var out: Type = default_value;
+        //     inline for (fields) |field| {
+        //         @field(out, field.name) = @field(value, field.name);
+        //     }
+
+        //     return out;
+        // }
+        pub fn clone(
+            allocator: std.mem.Allocator,
+            value: *const Type,
+        ) !Type {
             var out: Type = default_value;
             inline for (fields) |field| {
-                @field(out, field.name) = @field(value, field.name);
+                @field(out, field.name) = try field.type.clone(allocator, &@field(value, field.name));
             }
 
             return out;
@@ -325,12 +336,12 @@ pub fn VariableContainerType(comptime ST: type) type {
         }
 
         pub fn clone(
-            _: std.mem.Allocator,
+            allocator: std.mem.Allocator,
             value: *const Type,
         ) !Type {
             var out: Type = default_value;
             inline for (fields) |field| {
-                @field(out, field.name) = @field(value, field.name);
+                @field(out, field.name) = try field.type.clone(allocator, &@field(value, field.name));
             }
 
             return out;
