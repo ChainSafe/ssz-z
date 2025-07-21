@@ -74,13 +74,14 @@ pub fn FixedContainerType(comptime ST: type) type {
             return true;
         }
 
-        pub fn clone(_: std.mem.Allocator, value: *const Type) !Type {
-            var out: Type = default_value;
-            inline for (fields) |field| {
-                @field(out, field.name) = @field(value, field.name);
-            }
+         pub fn clone(_: std.mem.Allocator, value: *const Type) !Type {
+             var out: Type = default_value;
+             inline for (fields) |field| {
+                 @field(out, field.name) = @field(value, field.name);
+             }
 
-            return out;
+             return out;
+         }
         }
 
         pub fn hashTreeRoot(value: *const Type, out: *[32]u8) !void {
@@ -343,12 +344,12 @@ pub fn VariableContainerType(comptime ST: type) type {
         }
 
         pub fn clone(
-            _: std.mem.Allocator,
+            allocator: std.mem.Allocator,
             value: *const Type,
         ) !Type {
             var out: Type = default_value;
             inline for (fields) |field| {
-                @field(out, field.name) = @field(value, field.name);
+                @field(out, field.name) = try field.type.clone(allocator, &@field(value, field.name));
             }
 
             return out;

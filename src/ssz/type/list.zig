@@ -591,11 +591,8 @@ test "clone" {
 
     var bv: BytesVariable.Type = BytesVariable.default_value;
     defer bv.deinit(allocator);
-    try bv.append(allocator, cloned);
-    for (bv.items) |f| {
-        std.debug.print("{}\n", .{f});
-        std.debug.print("{}\n", .{&&f});
-    }
+    const bb: BytesFixed.Type = BytesFixed.default_value;
+    try bv.append(allocator, bb);
     var cloned_v: BytesVariable.Type = try BytesVariable.clone(allocator, &bv);
     defer cloned_v.deinit(allocator);
     try std.testing.expect(&bv != &cloned_v);
