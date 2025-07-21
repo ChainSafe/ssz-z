@@ -56,6 +56,11 @@ pub fn ByteListType(comptime _limit: comptime_int) type {
             mixInLength(value.items.len, out);
         }
 
+        pub fn deepClone(allocator: std.mem.Allocator, value: *const Type) !*Type {
+            var cloned: Type = try value.clone(allocator);
+            return &cloned;
+        }
+
         pub fn serializedSize(value: *const Type) usize {
             return value.items.len * Element.fixed_size;
         }
@@ -193,4 +198,18 @@ pub fn ByteListType(comptime _limit: comptime_int) type {
             _ = try hexToBytes(out.items, hex_bytes);
         }
     };
+}
+test "deepClone" {
+    // create a fixed vector type and instance and round-trip serialize
+
+    const allocator = std.testing.allocator;
+
+    const length = 44;
+    const Bits = ByteListType(length);
+    var b = Bits.default_value;
+    defer b.deinit(allocator);
+
+    var cloned = try Bits.deepClone(allocator, &b);
+    try std.testing.expect(&&b != &cloned);
+    try std.testing.expect(std.mem.eql(u8, b.items, cloned.items));
 }

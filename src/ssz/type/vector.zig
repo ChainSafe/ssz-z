@@ -48,6 +48,16 @@ pub fn FixedVectorType(comptime ST: type, comptime _length: comptime_int) type {
             try merkleize(@ptrCast(&chunks), chunk_depth, out);
         }
 
+        pub fn deepClone(allocator: std.mem.Allocator, value: *const Type) !Type {
+            var cloned = [_]Element.Type{Element.default_value} ** length;
+
+            for (0..length) |i| {
+                cloned[i] = try Element.deepClone(allocator, &value[i]);
+            }
+
+            return cloned;
+        }
+
         pub fn serializeIntoBytes(value: *const Type, out: []u8) usize {
             var i: usize = 0;
             for (value) |element| {
@@ -218,6 +228,16 @@ pub fn VariableVectorType(comptime ST: type, comptime _length: comptime_int) typ
             try merkleize(@ptrCast(&chunks), chunk_depth, out);
         }
 
+        pub fn deepClone(allocator: std.mem.Allocator, value: *const Type) !Type {
+            var cloned = [_]Element.Type{Element.default_value} ** length;
+
+            for (0..length) |i| {
+                cloned[i] = try Element.deepClone(allocator, &value[i]);
+            }
+
+            return cloned;
+        }
+
         pub fn serializedSize(value: *const Type) usize {
             var size: usize = 0;
             for (value) |*element| {
@@ -337,6 +357,7 @@ pub fn VariableVectorType(comptime ST: type, comptime _length: comptime_int) typ
 
 const UintType = @import("uint.zig").UintType;
 const BoolType = @import("bool.zig").BoolType;
+const BitListType = @import("bit_list.zig").BitListType;
 
 test "vector - sanity" {
     // create a fixed vector type and instance and round-trip serialize
@@ -346,4 +367,27 @@ test "vector - sanity" {
     var b0_buf: [Bytes32.fixed_size]u8 = undefined;
     _ = Bytes32.serializeIntoBytes(&b0, &b0_buf);
     try Bytes32.deserializeFromBytes(&b0_buf, &b0);
+}
+
+test "deepClonee" {
+    // create a fixed vector type and instance and round-trip serialize
+
+    const allocator = std.testing.allocator;
+    const BoolVectorFixed = FixedVectorType(BoolType(), 8);
+    var bvf: BoolVectorFixed.Type = BoolVectorFixed.default_value;
+
+    var cloned = try BoolVectorFixed.deepClone(allocator, &bvf);
+
+    try std.testing.expect(&bvf != &cloned);
+    try std.testing.expect(std.mem.eql(bool, bvf[0..], cloned[0..]));
+
+    const limit = 16;
+    const BitList = BitListType(limit);
+    const bl = BitList.default_value;
+    const BoolVectorVariable = VariableVectorType(BitList, 8);
+    var bvv: BoolVectorVariable.Type = BoolVectorVariable.default_value;
+    bvv[0] = bl;
+
+    var cloned_v = try BoolVectorVariable.deepClone(allocator, &bvv);
+    try std.testing.expect(&bvv != &cloned_v);
 }

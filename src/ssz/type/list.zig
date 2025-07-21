@@ -68,6 +68,14 @@ pub fn FixedListType(comptime ST: type, comptime _limit: comptime_int) type {
             mixInLength(value.items.len, out);
         }
 
+        /// Clones the underlying `ArrayList`.
+        ///
+        /// Caller owns the memory.
+        pub fn deepClone(allocator: std.mem.Allocator, value: *const Type) !Type {
+            const cloned = try value.clone(allocator);
+            return cloned;
+        }
+
         pub fn serializedSize(value: *const Type) usize {
             return value.items.len * Element.fixed_size;
         }
@@ -310,6 +318,20 @@ pub fn VariableListType(comptime ST: type, comptime _limit: comptime_int) type {
             value.deinit(allocator);
         }
 
+        /// Clones the underlying `ArrayList`.
+        ///
+        /// Caller owns the memory.
+        pub fn deepClone(allocator: std.mem.Allocator, value: *const Type) !Type {
+            var cloned = try Type.initCapacity(allocator, value.*.items.len);
+            cloned.expandToCapacity();
+
+            for (value.items, 0..) |v, i| {
+                const e = try Element.deepClone(allocator, &v);
+                cloned.items[i] = e;
+            }
+            return cloned;
+        }
+
         pub fn chunkCount(value: *const Type) usize {
             return value.items.len;
         }
@@ -550,4 +572,37 @@ test "ListType - sanity" {
 
     _ = BytesBytes.serializeIntoBytes(&bb, bb_buf);
     try BytesBytes.deserializeFromBytes(allocator, bb_buf, &bb);
+}
+
+//TODO(bing):FIX
+test "deepClone" {
+    const allocator = std.testing.allocator;
+    const BytesFixed = FixedListType(UintType(8), 32);
+    const BytesVariable = VariableListType(BytesFixed, 32);
+
+    var b: BytesFixed.Type = BytesFixed.default_value;
+    defer b.deinit(allocator);
+    try b.append(allocator, 5);
+
+    var cloned: BytesFixed.Type = try BytesFixed.deepClone(allocator, &b);
+    // We use cloned for later on, so we don't deinit it
+    // defer cloned.deinit(allocator);
+    try std.testing.expect(&b != &cloned);
+    try std.testing.expect(std.mem.eql(u8, b.items[0..], cloned.items[0..]));
+
+    var bv: BytesVariable.Type = BytesVariable.default_value;
+    defer bv.deinit(allocator);
+    try bv.append(allocator, cloned);
+    for (bv.items) |f| {
+        std.debug.print("{}\n", .{f});
+        std.debug.print("{}\n", .{&&f});
+    }
+    var cloned_v: BytesVariable.Type = try BytesVariable.deepClone(allocator, &bv);
+    defer cloned_v.deinit(allocator);
+    for (cloned_v.items) |f| {
+        std.debug.print("{}\n", .{f});
+        std.debug.print("{}\n", .{&&f});
+    }
+    try std.testing.expect(&bv != &cloned_v);
+    // TODO(bing): Equals test
 }

@@ -214,6 +214,17 @@ pub fn BitListType(comptime _limit: comptime_int) type {
             mixInLength(value.bit_len, out);
         }
 
+        /// Clones the underlying `ArrayList`.
+        ///
+        /// Caller owns the memory.
+        pub fn deepClone(allocator: std.mem.Allocator, value: *const Type) !Type {
+            const cloned = Type{
+                .data = try value.data.clone(allocator),
+                .bit_len = value.bit_len,
+            };
+            return cloned;
+        }
+
         pub fn serializedSize(value: *const Type) usize {
             return std.math.divCeil(usize, value.bit_len + 1, 8) catch unreachable;
         }
@@ -500,4 +511,18 @@ test "BitListType - intersectValues" {
         defer actual.deinit();
         try std.testing.expectEqualSlices(u8, tc.expected, actual.items);
     }
+}
+
+test "deepClone" {
+    const allocator = std.testing.allocator;
+
+    const Bits = BitListType(40);
+    var b: Bits.Type = try Bits.Type.fromBitLen(allocator, 30);
+    defer b.deinit(allocator);
+
+    var cloned = try Bits.deepClone(allocator, &b);
+    defer cloned.deinit(allocator);
+
+    try std.testing.expect(&b != &cloned);
+    try std.testing.expect(std.mem.eql(u8, b.data.items, cloned.data.items));
 }
