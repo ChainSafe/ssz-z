@@ -10,7 +10,7 @@ pub fn BoolType() type {
 
         pub const default_value: Type = false;
 
-        pub fn deepClone(_: std.mem.Allocator, value: *const Type) !Type {
+        pub fn clone(_: std.mem.Allocator, value: *const Type) !Type {
             const cloned: Type = value.*;
             return cloned;
         }

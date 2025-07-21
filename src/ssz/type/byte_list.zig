@@ -52,7 +52,7 @@ pub fn ByteListType(comptime _limit: comptime_int) type {
             mixInLength(value.items.len, out);
         }
 
-        pub fn deepClone(allocator: std.mem.Allocator, value: *const Type) !*Type {
+        pub fn clone(allocator: std.mem.Allocator, value: *const Type) !*Type {
             var cloned: Type = try value.clone(allocator);
             return &cloned;
         }
@@ -195,7 +195,7 @@ pub fn ByteListType(comptime _limit: comptime_int) type {
         }
     };
 }
-test "deepClone" {
+test "clone" {
     // create a fixed vector type and instance and round-trip serialize
 
     const allocator = std.testing.allocator;
@@ -205,7 +205,7 @@ test "deepClone" {
     var b = Bits.default_value;
     defer b.deinit(allocator);
 
-    var cloned = try Bits.deepClone(allocator, &b);
+    var cloned = try Bits.clone(allocator, &b);
     try std.testing.expect(&&b != &cloned);
     try std.testing.expect(std.mem.eql(u8, b.items, cloned.items));
 }
