@@ -99,6 +99,11 @@ pub fn BitVectorType(comptime _length: comptime_int) type {
             try merkleize(@ptrCast(&chunks), chunk_depth, out);
         }
 
+        pub fn deepClone(_: std.mem.Allocator, value: *const Type) !Type {
+            const cloned: Type = value.*;
+            return cloned;
+        }
+
         pub fn serializeIntoBytes(value: *const Type, out: []u8) usize {
             @memcpy(out[0..byte_length], &value.data);
             return byte_length;
@@ -212,4 +217,20 @@ test "BitVectorType - sanity" {
     var b_buf: [Bits.fixed_size]u8 = undefined;
     _ = Bits.serializeIntoBytes(&b, &b_buf);
     try Bits.deserializeFromBytes(&b_buf, &b);
+}
+
+test "deepClone" {
+    // create a fixed vector type and instance and round-trip serialize
+
+    const allocator = std.testing.allocator;
+
+    const length = 44;
+    const Bits = BitVectorType(length);
+    var b: Bits.Type = Bits.default_value;
+    try b.set(0, true);
+    try b.set(length - 1, true);
+
+    var cloned = try Bits.deepClone(allocator, &b);
+    try std.testing.expect(&b != &cloned);
+    try std.testing.expect(std.mem.eql(u8, b.data[0..], cloned.data[0..]));
 }

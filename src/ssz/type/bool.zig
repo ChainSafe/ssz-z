@@ -10,6 +10,11 @@ pub fn BoolType() type {
 
         pub const default_value: Type = false;
 
+        pub fn deepClone(_: std.mem.Allocator, value: *const Type) !Type {
+            const cloned: Type = value.*;
+            return cloned;
+        }
+
         pub fn hashTreeRoot(value: *const Type, out: *[32]u8) !void {
             @memset(out, 0);
             out[0] = if (value.*) 1 else 0;
