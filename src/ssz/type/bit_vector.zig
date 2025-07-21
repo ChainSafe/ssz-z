@@ -139,7 +139,7 @@ pub fn BitVectorType(comptime _length: comptime_int) type {
             try merkleize(@ptrCast(&chunks), chunk_depth, out);
         }
 
-        pub fn deepClone(_: std.mem.Allocator, value: *const Type) !Type {
+        pub fn clone(_: std.mem.Allocator, value: *const Type) !Type {
             const cloned: Type = value.*;
             return cloned;
         }
@@ -297,7 +297,7 @@ test "BitVectorType - intersectValues" {
     }
 }
 
-test "deepClone" {
+test "clone" {
     // create a fixed vector type and instance and round-trip serialize
 
     const allocator = std.testing.allocator;
@@ -308,7 +308,7 @@ test "deepClone" {
     try b.set(0, true);
     try b.set(length - 1, true);
 
-    var cloned = try Bits.deepClone(allocator, &b);
+    var cloned = try Bits.clone(allocator, &b);
     try std.testing.expect(&b != &cloned);
     try std.testing.expect(std.mem.eql(u8, b.data[0..], cloned.data[0..]));
 }

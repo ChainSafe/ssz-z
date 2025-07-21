@@ -41,7 +41,7 @@ pub fn ByteVectorType(comptime _length: comptime_int) type {
             try merkleize(@ptrCast(&chunks), chunk_depth, out);
         }
 
-        pub fn deepClone(_: std.mem.Allocator, value: *const Type) !Type {
+        pub fn clone(_: std.mem.Allocator, value: *const Type) !Type {
             const cloned: Type = value.*;
             return cloned;
         }
@@ -133,7 +133,7 @@ pub fn ByteVectorType(comptime _length: comptime_int) type {
     };
 }
 
-test "deepClone" {
+test "clone" {
     // create a fixed vector type and instance and round-trip serialize
 
     const allocator = std.testing.allocator;
@@ -142,7 +142,7 @@ test "deepClone" {
     const Bytes = ByteVectorType(length);
 
     var b = [_]u8{1} ** length;
-    var cloned = try Bytes.deepClone(allocator, &b);
+    var cloned = try Bytes.clone(allocator, &b);
     try std.testing.expect(&b != &cloned);
     try std.testing.expect(std.mem.eql(u8, b[0..], cloned[0..]));
 }

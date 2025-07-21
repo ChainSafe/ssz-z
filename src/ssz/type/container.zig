@@ -74,7 +74,7 @@ pub fn FixedContainerType(comptime ST: type) type {
             return true;
         }
 
-        pub fn deepClone(_: std.mem.Allocator, value: *const Type) !Type {
+        pub fn clone(_: std.mem.Allocator, value: *const Type) !Type {
             var out: Type = default_value;
             inline for (fields) |field| {
                 @field(out, field.name) = @field(value, field.name);
@@ -322,7 +322,7 @@ pub fn VariableContainerType(comptime ST: type) type {
             return true;
         }
 
-        pub fn deinit(value: *Type, allocator: std.mem.Allocator) void {
+        pub fn deinit(allocator: std.mem.Allocator, value: *Type) void {
             inline for (fields) |field| {
                 if (!comptime isFixedType(field.type)) {
                     field.type.deinit(allocator, &@field(value, field.name));
@@ -342,7 +342,7 @@ pub fn VariableContainerType(comptime ST: type) type {
             try merkleize(@ptrCast(&chunks), chunk_depth, out);
         }
 
-        pub fn deepClone(
+        pub fn clone(
             _: std.mem.Allocator,
             value: *const Type,
         ) !Type {
@@ -645,7 +645,7 @@ test "ContainerType - sanity" {
     try Foo.deserializeFromBytes(allocator, f_buf, &f);
 }
 
-test "deepCloneee" {
+test "clone" {
     const allocator = std.testing.allocator;
     // create a fixed container type and instance and round-trip serialize
     const Checkpoint = FixedContainerType(struct {
@@ -655,36 +655,15 @@ test "deepCloneee" {
 
     var c: Checkpoint.Type = Checkpoint.default_value;
 
-    var cloned = try Checkpoint.deepClone(allocator, &c);
+    var cloned = try Checkpoint.clone(allocator, &c);
     try std.testing.expect(&cloned != &c);
-    //var c_buf: [Checkpoint.fixed_size]u8 = undefined;
-
-    // _ = Checkpoint.serializeIntoBytes(&c, &c_buf);
-    // try Checkpoint.deserializeFromBytes(&c_buf, &c);
-
-    // // create a variable container type and instance and round-trip serialize
     const Foo = VariableContainerType(struct {
         a: FixedListType(UintType(8), 32),
         b: FixedListType(UintType(8), 32),
         c: FixedListType(UintType(8), 32),
     });
     var f: Foo.Type = Foo.default_value;
-    defer Foo.deinit(&f, allocator);
-    var cloned_f = try Foo.deepClone(allocator, &f);
+    defer Foo.deinit(allocator, &f);
+    var cloned_f = try Foo.clone(allocator, &f);
     try std.testing.expect(&cloned_f != &f);
-    // var f: Foo.Type = undefined;
-    // f.a = try std.ArrayListUnmanaged(u8).initCapacity(allocator, 10);
-    // f.b = try std.ArrayListUnmanaged(u8).initCapacity(allocator, 10);
-    // f.c = try std.ArrayListUnmanaged(u8).initCapacity(allocator, 10);
-    // defer f.a.deinit(allocator);
-    // defer f.b.deinit(allocator);
-    // defer f.c.deinit(allocator);
-    // f.a.expandToCapacity();
-    // f.b.expandToCapacity();
-    // f.c.expandToCapacity();
-
-    // const f_buf = try allocator.alloc(u8, Foo.serializedSize(&f));
-    // defer allocator.free(f_buf);
-    // _ = Foo.serializeIntoBytes(&f, f_buf);
-    // try Foo.deserializeFromBytes(allocator, f_buf, &f);
 }

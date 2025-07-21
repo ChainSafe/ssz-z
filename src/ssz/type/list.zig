@@ -71,7 +71,7 @@ pub fn FixedListType(comptime ST: type, comptime _limit: comptime_int) type {
         /// Clones the underlying `ArrayList`.
         ///
         /// Caller owns the memory.
-        pub fn deepClone(allocator: std.mem.Allocator, value: *const Type) !Type {
+        pub fn clone(allocator: std.mem.Allocator, value: *const Type) !Type {
             const cloned = try value.clone(allocator);
             return cloned;
         }
@@ -321,12 +321,12 @@ pub fn VariableListType(comptime ST: type, comptime _limit: comptime_int) type {
         /// Clones the underlying `ArrayList`.
         ///
         /// Caller owns the memory.
-        pub fn deepClone(allocator: std.mem.Allocator, value: *const Type) !Type {
+        pub fn clone(allocator: std.mem.Allocator, value: *const Type) !Type {
             var cloned = try Type.initCapacity(allocator, value.*.items.len);
             cloned.expandToCapacity();
 
             for (value.items, 0..) |v, i| {
-                const e = try Element.deepClone(allocator, &v);
+                const e = try Element.clone(allocator, &v);
                 cloned.items[i] = e;
             }
             return cloned;
@@ -574,8 +574,7 @@ test "ListType - sanity" {
     try BytesBytes.deserializeFromBytes(allocator, bb_buf, &bb);
 }
 
-//TODO(bing):FIX
-test "deepClone" {
+test "clone" {
     const allocator = std.testing.allocator;
     const BytesFixed = FixedListType(UintType(8), 32);
     const BytesVariable = VariableListType(BytesFixed, 32);
@@ -584,9 +583,9 @@ test "deepClone" {
     defer b.deinit(allocator);
     try b.append(allocator, 5);
 
-    var cloned: BytesFixed.Type = try BytesFixed.deepClone(allocator, &b);
+    var cloned: BytesFixed.Type = try BytesFixed.clone(allocator, &b);
     // We use cloned for later on, so we don't deinit it
-    // defer cloned.deinit(allocator);
+    defer cloned.deinit(allocator);
     try std.testing.expect(&b != &cloned);
     try std.testing.expect(std.mem.eql(u8, b.items[0..], cloned.items[0..]));
 
@@ -597,12 +596,8 @@ test "deepClone" {
         std.debug.print("{}\n", .{f});
         std.debug.print("{}\n", .{&&f});
     }
-    var cloned_v: BytesVariable.Type = try BytesVariable.deepClone(allocator, &bv);
+    var cloned_v: BytesVariable.Type = try BytesVariable.clone(allocator, &bv);
     defer cloned_v.deinit(allocator);
-    for (cloned_v.items) |f| {
-        std.debug.print("{}\n", .{f});
-        std.debug.print("{}\n", .{&&f});
-    }
     try std.testing.expect(&bv != &cloned_v);
     // TODO(bing): Equals test
 }
