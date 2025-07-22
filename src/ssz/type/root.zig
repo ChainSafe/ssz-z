@@ -27,3 +27,17 @@ pub const VariableVectorType = @import("vector.zig").VariableVectorType;
 
 pub const FixedContainerType = @import("container.zig").FixedContainerType;
 pub const VariableContainerType = @import("container.zig").VariableContainerType;
+
+test {
+    _ = @import("bool.zig");
+    _ = @import("uint.zig");
+    _ = @import("vector.zig");
+    _ = @import("bit_list.zig");
+    _ = @import("bit_vector.zig");
+    _ = @import("byte_list.zig");
+    _ = @import("byte_vector.zig");
+    _ = @import("list.zig");
+    _ = @import("container.zig");
+}
+
+const std = @import("std");

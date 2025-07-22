@@ -189,7 +189,7 @@ pub fn BitVectorType(comptime _length: comptime_int) type {
 test "BitVectorType - sanity" {
     const length = 44;
     const Bits = BitVectorType(length);
-    var b: Bits.Type = Bits.Type.init();
+    var b: Bits.Type = Bits.default_value;
     try b.set(0, true);
     try b.set(length - 1, true);
 

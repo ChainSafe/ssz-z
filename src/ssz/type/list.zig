@@ -486,7 +486,7 @@ test "ListType - sanity" {
     // create a fixed list type and instance and round-trip serialize
     const Bytes = FixedListType(UintType(8), 32);
 
-    var b: Bytes.Type = try Bytes.init(allocator);
+    var b: Bytes.Type = Bytes.default_value;
     defer b.deinit(allocator);
     try b.append(allocator, 5);
 
@@ -498,7 +498,7 @@ test "ListType - sanity" {
 
     // create a variable list type and instance and round-trip serialize
     const BytesBytes = VariableListType(Bytes, 32);
-    var b2: BytesBytes.Type = try BytesBytes.init(allocator);
+    var b2: BytesBytes.Type = BytesBytes.default_value;
     defer b2.deinit(allocator);
     try b2.append(allocator, b);
 
