@@ -56,6 +56,9 @@ pub fn ByteListType(comptime _limit: comptime_int) type {
             mixInLength(value.items.len, out);
         }
 
+        /// Clones the underlying `ArrayList`.
+        ///
+        /// Caller owns the memory.
         pub fn clone(allocator: std.mem.Allocator, value: *const Type) !*Type {
             var cloned: Type = try value.clone(allocator);
             return &cloned;

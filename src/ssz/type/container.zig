@@ -74,6 +74,9 @@ pub fn FixedContainerType(comptime ST: type) type {
             return true;
         }
 
++        /// Creates a new `FixedContainerType` and clones all underlying fields in the container.
++        ///
++        /// Caller owns the memory.
          pub fn clone(_: std.mem.Allocator, value: *const Type) !Type {
              var out: Type = default_value;
              inline for (fields) |field| {
@@ -343,6 +346,9 @@ pub fn VariableContainerType(comptime ST: type) type {
             try merkleize(@ptrCast(&chunks), chunk_depth, out);
         }
 
+        /// Creates a new `VariableContainerType` and clones all underlying fields in the container.
+        ///
+        /// Caller owns the memory.
         pub fn clone(
             allocator: std.mem.Allocator,
             value: *const Type,

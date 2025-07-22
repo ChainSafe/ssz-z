@@ -214,7 +214,7 @@ pub fn BitListType(comptime _limit: comptime_int) type {
             mixInLength(value.bit_len, out);
         }
 
-        /// Clones the underlying `ArrayList`.
+        /// Clones the underlying `ArrayList` in `data`.
         ///
         /// Caller owns the memory.
         pub fn clone(allocator: std.mem.Allocator, value: *const Type) !Type {

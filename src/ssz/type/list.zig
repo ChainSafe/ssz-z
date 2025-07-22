@@ -72,7 +72,13 @@ pub fn FixedListType(comptime ST: type, comptime _limit: comptime_int) type {
         ///
         /// Caller owns the memory.
         pub fn clone(allocator: std.mem.Allocator, value: *const Type) !Type {
-            const cloned = try value.clone(allocator);
+            var cloned = try Type.initCapacity(allocator, value.*.items.len);
+            cloned.expandToCapacity();
+
+            for (value.items, 0..) |v, i| {
+                const e = try Element.clone(allocator, &v);
+                cloned.items[i] = e;
+            }
             return cloned;
         }
 

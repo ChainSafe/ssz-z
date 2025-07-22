@@ -51,9 +51,7 @@ pub fn FixedVectorType(comptime ST: type, comptime _length: comptime_int) type {
         pub fn clone(allocator: std.mem.Allocator, value: *const Type) !Type {
             var cloned = [_]Element.Type{Element.default_value} ** length;
 
-            for (0..length) |i| {
-                cloned[i] = try Element.clone(allocator, &value[i]);
-            }
+            for (0..length) |i| cloned[i] = try Element.clone(allocator, &value[i]);
 
             return cloned;
         }
@@ -231,9 +229,7 @@ pub fn VariableVectorType(comptime ST: type, comptime _length: comptime_int) typ
         pub fn clone(allocator: std.mem.Allocator, value: *const Type) !Type {
             var cloned = [_]Element.Type{Element.default_value} ** length;
 
-            for (0..length) |i| {
-                cloned[i] = try Element.clone(allocator, &value[i]);
-            }
+            for (0..length) |i| cloned[i] = try Element.clone(allocator, &value[i]);
 
             return cloned;
         }
