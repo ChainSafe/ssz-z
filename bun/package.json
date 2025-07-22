@@ -1,0 +1,30 @@
+{
+  "name": "bun",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "bun-ffi-z": "bun-ffi-z",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "MIT",
+  "description": "",
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e",
+  "dependencies": {
+    "@chainsafe/bun-ffi-z": "^1.1.1"
+  },
+  "bun-ffi-z": {
+    "name": "ssz",
+    "targets": [
+      "linux-x64-gnu",
+      "linux-arm64-gnu",
+      "linux-x64-musl",
+      "linux-arm64-musl",
+      "darwin-x64",
+      "darwin-arm64"
+    ],
+    "optimize": "ReleaseSafe",
+    "zigCwd": "..",
+    "zigExportFiles": ["src/bun_ffi/root.zig"]
+  }
+}

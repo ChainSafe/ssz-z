@@ -137,7 +137,15 @@
         //     },
         // },
     },
-    .libraries = .{},
+    .libraries = .{
+        .bun_ffi = .{
+            .root_module = .{
+                .root_source_file = "src/bun_ffi/root.zig",
+                .imports = .{ .persistent_merkle_tree, .ssz, .consensus_types },
+            },
+            .linkage = .dynamic,
+        },
+    },
     .tests = .{
         .int = .{
             .root_module = .{
