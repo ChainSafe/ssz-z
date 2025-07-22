@@ -25,10 +25,12 @@ pub fn BitVector(comptime _length: comptime_int) type {
             return bv;
         }
 
-        pub fn toBoolArray(self: *const @This(), bools: *[length]bool) void {
+        pub fn toBoolArray(self: *const @This()) [length]bool {
+            var bools: [length]bool = undefined;
             for (0..length) |i| {
                 bools[i] = self.get(i) catch unreachable;
             }
+            return bools;
         }
 
         pub fn get(self: *const @This(), bit_index: usize) !bool {
@@ -189,10 +191,6 @@ pub fn BitVectorType(comptime _length: comptime_int) type {
                 return error.trailingData;
             }
         }
-
-        pub fn serializeToBoolArray(value: *const Type, out: *[length]bool) void {
-            value.toBoolArray(out);
-        }
     };
 }
 
@@ -203,24 +201,26 @@ test "BitVectorType - sanity" {
     try b.set(0, true);
     try b.set(length - 1, true);
 
-    var boolArr: [length]bool = undefined;
-    Bits.serializeToBoolArray(&b, &boolArr);
-
-    try std.testing.expectEqual(length, boolArr.len);
-
     try std.testing.expectEqual(true, try b.get(0));
-    try std.testing.expectEqual(true, boolArr[0]);
 
     for (1..length - 1) |i| {
         try std.testing.expectEqual(false, try b.get(i));
-        try std.testing.expectEqual(false, boolArr[i]);
     }
     try std.testing.expectEqual(true, try b.get(length - 1));
-    try std.testing.expectEqual(true, boolArr[length - 1]);
 
     var b_buf: [Bits.fixed_size]u8 = undefined;
     _ = Bits.serializeIntoBytes(&b, &b_buf);
     try Bits.deserializeFromBytes(&b_buf, &b);
+}
+
+test "BitVectorType - sanity with bools" {
+    const Bits = BitVectorType(4);
+    const expected_bools = [_]bool{ true, false, true, true };
+    var b: Bits.Type = try Bits.Type.fromBoolArray(expected_bools);
+
+    const actual_bools = b.toBoolArray();
+
+    try std.testing.expectEqualSlices(bool, &expected_bools, &actual_bools);
 }
 
 test {

@@ -42,10 +42,13 @@ pub fn BitList(comptime limit: comptime_int) type {
             return bl;
         }
 
-        pub fn toBoolSlice(self: *const @This(), bools: []bool) void {
+        pub fn toBoolSlice(self: *const @This(), allocator: std.mem.Allocator) ![]bool {
+            var bools = try allocator.alloc(bool, self.bit_len);
             for (0..self.bit_len) |i| {
                 bools[i] = self.get(i) catch unreachable;
             }
+
+            return bools;
         }
 
         pub fn deinit(self: *@This(), allocator: std.mem.Allocator) void {
@@ -372,10 +375,6 @@ pub fn BitListType(comptime _limit: comptime_int) type {
             }
             try deserializeFromBytes(allocator, bytes, out);
         }
-
-        pub fn serializeToBoolArray(value: *const Type, out: []bool) !void {
-            value.toBoolSlice(out);
-        }
     };
 }
 
@@ -394,11 +393,17 @@ test "BitListType - sanity" {
     try Bits.deserializeFromBytes(allocator, b_buf, &b);
 
     try std.testing.expect(try b.get(0) == false);
+}
 
-    const boolArr = try allocator.alloc(bool, b.bit_len);
-    defer allocator.free(boolArr);
+test "BitListType - sanity with bools" {
+    const allocator = std.testing.allocator;
+    const Bits = BitListType(8);
+    const expected_bools = [_]bool{ true, false, true, true };
+    var b: Bits.Type = try Bits.Type.fromBoolSlice(allocator, &expected_bools);
+    defer b.deinit(allocator);
 
-    try Bits.serializeToBoolArray(&b, boolArr);
-    try std.testing.expectEqual(false, boolArr[0]);
-    try std.testing.expectEqual(true, boolArr[2]);
+    const actual_bools = try b.toBoolSlice(allocator);
+    defer allocator.free(actual_bools);
+
+    try std.testing.expectEqualSlices(bool, &expected_bools, actual_bools);
 }
