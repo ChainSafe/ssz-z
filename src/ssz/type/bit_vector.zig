@@ -203,8 +203,3 @@ test "BitVectorType - sanity" {
     _ = Bits.serializeIntoBytes(&b, &b_buf);
     try Bits.deserializeFromBytes(&b_buf, &b);
 }
-
-test {
-    std.debug.print("float {d}\n", .{3.14159565});
-    std.debug.print("int {d}\n", .{3});
-}
