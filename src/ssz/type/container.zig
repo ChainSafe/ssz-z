@@ -76,8 +76,8 @@ pub fn FixedContainerType(comptime ST: type) type {
         pub fn serializeIntoBytes(value: *const Type, out: []u8) usize {
             var i: usize = 0;
             inline for (fields) |field| {
-                const field_value = @field(value, field.name);
-                i += field.type.serializeIntoBytes(&field_value, out[i..]);
+                const field_value_ptr = &@field(value, field.name);
+                i += field.type.serializeIntoBytes(field_value_ptr, out[i..]);
             }
             return i;
         }
@@ -138,8 +138,8 @@ pub fn FixedContainerType(comptime ST: type) type {
             pub fn serializeIntoBytes(value: Node.Id, pool: *Node.Pool, out: []u8) !usize {
                 var i: usize = 0;
                 inline for (fields) |field| {
-                    const field_value = @field(value, field.name);
-                    i += try field.type.tree.serializeIntoBytes(field_value, pool, out[i..]);
+                    const field_value_ptr = &@field(value, field.name);
+                    i += try field.type.tree.serializeIntoBytes(field_value_ptr, pool, out[i..]);
                 }
                 return i;
             }

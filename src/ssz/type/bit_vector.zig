@@ -197,7 +197,7 @@ pub fn BitVectorType(comptime _length: comptime_int) type {
 test "BitVectorType - sanity" {
     const length = 44;
     const Bits = BitVectorType(length);
-    var b: Bits.Type = Bits.Type.default_value;
+    var b: Bits.Type = Bits.default_value;
     try b.set(0, true);
     try b.set(length - 1, true);
 
@@ -221,9 +221,4 @@ test "BitVectorType - sanity with bools" {
     const actual_bools = b.toBoolArray();
 
     try std.testing.expectEqualSlices(bool, &expected_bools, &actual_bools);
-}
-
-test {
-    std.debug.print("float {d}\n", .{3.14159565});
-    std.debug.print("int {d}\n", .{3});
 }
