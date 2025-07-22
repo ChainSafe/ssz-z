@@ -221,7 +221,7 @@ pub const BlindedBeaconBlockBody = ssz.VariableContainerType(struct {
     deposits: ssz.FixedListType(Deposit, preset.MAX_DEPOSITS),
     voluntary_exits: ssz.FixedListType(SignedVoluntaryExit, preset.MAX_VOLUNTARY_EXITS),
     sync_aggregate: SyncAggregate,
-    execution_payload: ExecutionPayloadHeader,
+    execution_payload_header: ExecutionPayloadHeader,
     bls_to_execution_changes: ssz.FixedListType(SignedBLSToExecutionChange, preset.MAX_BLS_TO_EXECUTION_CHANGES),
     blob_kzg_commitments: ssz.FixedListType(p.KZGCommitment, preset.MAX_BLOB_COMMITMENTS_PER_BLOCK),
     execution_requests: ExecutionRequests,
