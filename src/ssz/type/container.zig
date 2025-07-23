@@ -71,13 +71,11 @@ pub fn FixedContainerType(comptime ST: type) type {
         pub fn clone(
             allocator: std.mem.Allocator,
             value: *const Type,
-        ) !Type {
-            var out: Type = default_value;
+            out: *Type,
+        ) !void {
             inline for (fields) |field| {
-                @field(out, field.name) = try field.type.clone(allocator, &@field(value, field.name));
+                try field.type.clone(allocator, &@field(value, field.name), &@field(out, field.name));
             }
-
-            return out;
         }
 
         pub fn hashTreeRoot(value: *const Type, out: *[32]u8) !void {
@@ -336,13 +334,11 @@ pub fn VariableContainerType(comptime ST: type) type {
         pub fn clone(
             allocator: std.mem.Allocator,
             value: *const Type,
-        ) !Type {
-            var out: Type = default_value;
+            out: *Type,
+        ) !void {
             inline for (fields) |field| {
-                @field(out, field.name) = try field.type.clone(allocator, &@field(value, field.name));
+                try field.type.clone(allocator, &@field(value, field.name), &@field(out, field.name));
             }
-
-            return out;
         }
 
         pub fn serializedSize(value: *const Type) usize {
@@ -645,16 +641,18 @@ test "clone" {
 
     var c: Checkpoint.Type = Checkpoint.default_value;
 
-    var cloned = try Checkpoint.clone(allocator, &c);
+    var cloned: Checkpoint.Type = undefined;
+    try Checkpoint.clone(allocator, &c, &cloned);
     try std.testing.expect(&cloned != &c);
     const Foo = VariableContainerType(struct {
         a: FixedListType(UintType(8), 32),
         b: FixedListType(UintType(8), 32),
         c: FixedListType(UintType(8), 32),
     });
-    var f: Foo.Type = Foo.default_value;
+    var f = Foo.default_value;
     defer Foo.deinit(allocator, &f);
-    var cloned_f = try Foo.clone(allocator, &f);
+    var cloned_f: Foo.Type = undefined;
+    try Foo.clone(allocator, &f, &cloned_f);
     try std.testing.expect(&cloned_f != &f);
     // TODO(bing): test equals when ready
 }

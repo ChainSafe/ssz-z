@@ -10,12 +10,8 @@ pub fn BoolType() type {
 
         pub const default_value: Type = false;
 
-        /// Clones the underlying `ArrayList`.
-        ///
-        /// Caller owns the memory.
-        pub fn clone(_: std.mem.Allocator, value: *const Type) !Type {
-            const cloned: Type = value.*;
-            return cloned;
+        pub fn clone(_: std.mem.Allocator, value: *const Type, out: *Type) !void {
+            out.* = value.*;
         }
 
         pub fn hashTreeRoot(value: *const Type, out: *[32]u8) !void {
