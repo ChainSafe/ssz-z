@@ -41,9 +41,8 @@ pub fn ByteVectorType(comptime _length: comptime_int) type {
             try merkleize(@ptrCast(&chunks), chunk_depth, out);
         }
 
-        pub fn clone(_: std.mem.Allocator, value: *const Type) !Type {
-            const cloned: Type = value.*;
-            return cloned;
+        pub fn clone(_: std.mem.Allocator, value: *const Type, out: *Type) !void {
+            out.* = value.*;
         }
 
         pub fn serializeIntoBytes(value: *const Type, out: []u8) usize {
@@ -140,7 +139,8 @@ test "clone" {
     const Bytes = ByteVectorType(length);
 
     var b = [_]u8{1} ** length;
-    var cloned = try Bytes.clone(allocator, &b);
+    var cloned: [44]u8 = undefined;
+    try Bytes.clone(allocator, &b, &cloned);
     try std.testing.expect(&b != &cloned);
     try std.testing.expect(std.mem.eql(u8, b[0..], cloned[0..]));
 }

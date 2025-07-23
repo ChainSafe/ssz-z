@@ -217,12 +217,9 @@ pub fn BitListType(comptime _limit: comptime_int) type {
         /// Clones the underlying `ArrayList` in `data`.
         ///
         /// Caller owns the memory.
-        pub fn clone(allocator: std.mem.Allocator, value: *const Type) !Type {
-            const cloned = Type{
-                .data = try value.data.clone(allocator),
-                .bit_len = value.bit_len,
-            };
-            return cloned;
+        pub fn clone(allocator: std.mem.Allocator, value: *const Type, out: *Type) !void {
+            out.data = try value.data.clone(allocator);
+            out.bit_len = value.bit_len;
         }
 
         pub fn serializedSize(value: *const Type) usize {
@@ -520,7 +517,8 @@ test "clone" {
     var b: Bits.Type = try Bits.Type.fromBitLen(allocator, 30);
     defer b.deinit(allocator);
 
-    var cloned = try Bits.clone(allocator, &b);
+    var cloned: Bits.Type = undefined;
+    try Bits.clone(allocator, &b, &cloned);
     defer cloned.deinit(allocator);
 
     try std.testing.expect(&b != &cloned);

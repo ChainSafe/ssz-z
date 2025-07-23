@@ -71,15 +71,13 @@ pub fn FixedListType(comptime ST: type, comptime _limit: comptime_int) type {
         /// Clones the underlying `ArrayList`.
         ///
         /// Caller owns the memory.
-        pub fn clone(allocator: std.mem.Allocator, value: *const Type) !Type {
-            var cloned = try Type.initCapacity(allocator, value.*.items.len);
-            cloned.expandToCapacity();
-
+        pub fn clone(allocator: std.mem.Allocator, value: *const Type, out: *Type) !void {
+            try out.resize(allocator, value.items.len);
             for (value.items, 0..) |v, i| {
-                const e = try Element.clone(allocator, &v);
-                cloned.items[i] = e;
+                var e: Element.Type = undefined;
+                try Element.clone(allocator, &v, &e);
+                out.items[i] = e;
             }
-            return cloned;
         }
 
         pub fn serializedSize(value: *const Type) usize {
@@ -327,15 +325,13 @@ pub fn VariableListType(comptime ST: type, comptime _limit: comptime_int) type {
         /// Clones the underlying `ArrayList`.
         ///
         /// Caller owns the memory.
-        pub fn clone(allocator: std.mem.Allocator, value: *const Type) !Type {
-            var cloned = try Type.initCapacity(allocator, value.*.items.len);
-            cloned.expandToCapacity();
-
+        pub fn clone(allocator: std.mem.Allocator, value: *const Type, out: *Type) !void {
+            try out.resize(allocator, value.items.len);
             for (value.items, 0..) |v, i| {
-                const e = try Element.clone(allocator, &v);
-                cloned.items[i] = e;
+                var e: Element.Type = undefined;
+                try Element.clone(allocator, &v, &e);
+                out.items[i] = e;
             }
-            return cloned;
         }
 
         pub fn chunkCount(value: *const Type) usize {
@@ -588,8 +584,8 @@ test "clone" {
     var b: BytesFixed.Type = BytesFixed.default_value;
     defer b.deinit(allocator);
     try b.append(allocator, 5);
-
-    var cloned: BytesFixed.Type = try BytesFixed.clone(allocator, &b);
+    var cloned: BytesFixed.Type = BytesFixed.default_value;
+    try BytesFixed.clone(allocator, &b, &cloned);
     defer cloned.deinit(allocator);
     try std.testing.expect(&b != &cloned);
     try std.testing.expect(std.mem.eql(u8, b.items[0..], cloned.items[0..]));
@@ -598,7 +594,8 @@ test "clone" {
     defer bv.deinit(allocator);
     const bb: BytesFixed.Type = BytesFixed.default_value;
     try bv.append(allocator, bb);
-    var cloned_v: BytesVariable.Type = try BytesVariable.clone(allocator, &bv);
+    var cloned_v: BytesVariable.Type = BytesVariable.default_value;
+    try BytesVariable.clone(allocator, &bv, &cloned_v);
     defer cloned_v.deinit(allocator);
     try std.testing.expect(&bv != &cloned_v);
     // TODO(bing): Equals test
