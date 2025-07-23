@@ -365,9 +365,7 @@ test "vector - sanity" {
     try Bytes32.deserializeFromBytes(&b0_buf, &b0);
 }
 
-test "clonee" {
-    // create a fixed vector type and instance and round-trip serialize
-
+test "clone" {
     const allocator = std.testing.allocator;
     const BoolVectorFixed = FixedVectorType(BoolType(), 8);
     var bvf: BoolVectorFixed.Type = BoolVectorFixed.default_value;

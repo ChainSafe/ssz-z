@@ -654,7 +654,6 @@ test "ContainerType - sanity" {
 
 test "clone" {
     const allocator = std.testing.allocator;
-    // create a fixed container type and instance and round-trip serialize
     const Checkpoint = FixedContainerType(struct {
         slot: UintType(8),
         root: ByteVectorType(32),
@@ -673,4 +672,5 @@ test "clone" {
     defer Foo.deinit(allocator, &f);
     var cloned_f = try Foo.clone(allocator, &f);
     try std.testing.expect(&cloned_f != &f);
+    // TODO(bing): test equals when ready
 }

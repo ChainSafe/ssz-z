@@ -134,8 +134,6 @@ pub fn ByteVectorType(comptime _length: comptime_int) type {
 }
 
 test "clone" {
-    // create a fixed vector type and instance and round-trip serialize
-
     const allocator = std.testing.allocator;
 
     const length = 44;

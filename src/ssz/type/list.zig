@@ -590,7 +590,6 @@ test "clone" {
     try b.append(allocator, 5);
 
     var cloned: BytesFixed.Type = try BytesFixed.clone(allocator, &b);
-    // We use cloned for later on, so we don't deinit it
     defer cloned.deinit(allocator);
     try std.testing.expect(&b != &cloned);
     try std.testing.expect(std.mem.eql(u8, b.items[0..], cloned.items[0..]));
