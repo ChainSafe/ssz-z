@@ -208,8 +208,10 @@ test "clone" {
     const Bits = ByteListType(length);
     var b = Bits.default_value;
     defer b.deinit(allocator);
+    try b.append(allocator, 5);
 
     var cloned: Bits.Type = undefined;
+    defer cloned.deinit(allocator);
     try Bits.clone(allocator, &b, &cloned);
     try std.testing.expect(&b != &cloned);
     try std.testing.expect(std.mem.eql(u8, b.items, cloned.items));
