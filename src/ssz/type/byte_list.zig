@@ -59,9 +59,9 @@ pub fn ByteListType(comptime _limit: comptime_int) type {
         /// Clones the underlying `ArrayList`.
         ///
         /// Caller owns the memory.
-        pub fn clone(allocator: std.mem.Allocator, value: *const Type) !*Type {
-            var cloned: Type = try value.clone(allocator);
-            return &cloned;
+        pub fn clone(allocator: std.mem.Allocator, value: *const Type) !Type {
+            const cloned: Type = try value.clone(allocator);
+            return cloned;
         }
 
         pub fn serializedSize(value: *const Type) usize {
