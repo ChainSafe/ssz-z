@@ -71,6 +71,13 @@ pub const HistoricalBatch = ssz.FixedContainerType(struct {
     state_roots: HistoricalStateRoots,
 });
 
+/// Non-spec'ed helper type to allow efficient hashing in epoch transition.
+/// This type is like a 'Header' of HistoricalBatch where its fields are hashed.
+pub const HistoricalBatchRoots = ssz.FixedContainerType(struct {
+    block_roots: p.Root,
+    state_roots: p.Root,
+});
+
 pub const DepositMessage = ssz.FixedContainerType(struct {
     pubkey: p.BLSPubkey,
     withdrawal_credentials: p.Root,
