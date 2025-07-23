@@ -39,3 +39,7 @@ pub const HasherData = hasher.HasherData;
 
 const tree_view = @import("tree_view.zig");
 pub const TreeView = tree_view.TreeView;
+
+test {
+    testing.refAllDecls(@This());
+}
