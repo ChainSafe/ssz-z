@@ -65,6 +65,10 @@ pub fn FixedContainerType(comptime ST: type) type {
             break :blk out;
         };
 
+        pub fn equals(a: *const Type, b: *const Type) bool {
+            return std.mem.eql(u8, std.mem.asBytes(a), std.mem.asBytes(b));
+        }
+
         pub fn hashTreeRoot(value: *const Type, out: *[32]u8) !void {
             var chunks = [_][32]u8{[_]u8{0} ** 32} ** ((chunk_count + 1) / 2 * 2);
             inline for (fields, 0..) |field, i| {
@@ -294,6 +298,15 @@ pub fn VariableContainerType(comptime ST: type) type {
             }
             break :blk out;
         };
+
+        pub fn equals(a: *const Type, b: *const Type) bool {
+            inline for (fields) |field| {
+                if (!field.type.equals(&@field(a, field.name), &@field(b, field.name))) {
+                    return false;
+                }
+            }
+            return true;
+        }
 
         pub fn deinit(allocator: std.mem.Allocator, value: *Type) void {
             inline for (fields) |field| {
