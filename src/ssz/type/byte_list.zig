@@ -52,6 +52,13 @@ pub fn ByteListType(comptime _limit: comptime_int) type {
             mixInLength(value.items.len, out);
         }
 
+        /// Clones the underlying `ArrayList`.
+        ///
+        /// Caller owns the memory.
+        pub fn clone(allocator: std.mem.Allocator, value: *const Type, out: *Type) !void {
+            out.* = try value.clone(allocator);
+        }
+
         pub fn serializedSize(value: *const Type) usize {
             return value.items.len * Element.fixed_size;
         }
@@ -189,4 +196,19 @@ pub fn ByteListType(comptime _limit: comptime_int) type {
             _ = try hexToBytes(out.items, hex_bytes);
         }
     };
+}
+test "clone" {
+    const allocator = std.testing.allocator;
+
+    const length = 44;
+    const Bits = ByteListType(length);
+    var b = Bits.default_value;
+    defer b.deinit(allocator);
+    try b.append(allocator, 5);
+
+    var cloned: Bits.Type = undefined;
+    defer cloned.deinit(allocator);
+    try Bits.clone(allocator, &b, &cloned);
+    try std.testing.expect(&b != &cloned);
+    try std.testing.expect(std.mem.eql(u8, b.items, cloned.items));
 }

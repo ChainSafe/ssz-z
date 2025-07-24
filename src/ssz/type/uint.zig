@@ -25,6 +25,10 @@ pub fn UintType(comptime bits: comptime_int) type {
             std.mem.writeInt(Type, out[0..fixed_size], value.*, .little);
         }
 
+        pub fn clone(_: std.mem.Allocator, value: *const Type, out: *Type) !void {
+            out.* = value.*;
+        }
+
         pub fn serializeIntoBytes(value: *const Type, out: []u8) usize {
             std.mem.writeInt(Type, out[0..bytes], value.*, .little);
             return bytes;
