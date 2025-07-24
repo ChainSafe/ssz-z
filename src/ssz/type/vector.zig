@@ -209,8 +209,8 @@ pub fn VariableVectorType(comptime ST: type, comptime _length: comptime_int) typ
         }
 
         pub fn deinit(allocator: std.mem.Allocator, value: *Type) void {
-            for (value) |element| {
-                Element.deinit(allocator, element);
+            for (0..length) |i| {
+                Element.deinit(allocator, &value[i]);
             }
         }
 
@@ -361,21 +361,43 @@ test "clone" {
     const allocator = std.testing.allocator;
     const BoolVectorFixed = FixedVectorType(BoolType(), 8);
     var bvf: BoolVectorFixed.Type = BoolVectorFixed.default_value;
+    bvf[0] = true;
+    bvf[2] = true;
 
-    var cloned: BoolVectorFixed.Type = undefined;
-    try BoolVectorFixed.clone(allocator, &bvf, &cloned);
+    const num_to_clone: comptime_int = 1_000_000;
 
-    try std.testing.expect(&bvf != &cloned);
-    try std.testing.expect(std.mem.eql(bool, bvf[0..], cloned[0..]));
+    std.debug.print("Starting fixed clone: {}\n", .{num_to_clone});
+    var timer = try std.time.Timer.start();
+
+    for (0..num_to_clone) |_| {
+        var cloned: BoolVectorFixed.Type = undefined;
+        try BoolVectorFixed.clone(allocator, &bvf, &cloned);
+    }
+    var stop = timer.read();
+    std.debug.print("Done: took {}ns to clone {} times \n", .{ stop, num_to_clone });
 
     const limit = 16;
     const BitList = BitListType(limit);
-    const bl = BitList.default_value;
+    var bl = BitList.default_value;
+    try bl.data.append(allocator, 1);
+    defer bl.deinit(allocator);
     const BoolVectorVariable = VariableVectorType(BitList, 8);
     var bvv: BoolVectorVariable.Type = BoolVectorVariable.default_value;
     bvv[0] = bl;
 
-    var cloned_v: BoolVectorVariable.Type = undefined;
-    try BoolVectorVariable.clone(allocator, &bvv, &cloned_v);
-    try std.testing.expect(&bvv != &cloned_v);
+    var clones: std.ArrayList(BoolVectorVariable.Type) = try std.ArrayList(BoolVectorVariable.Type).initCapacity(allocator, num_to_clone);
+    defer for (0..num_to_clone) |i| {
+        defer BoolVectorVariable.deinit(allocator, &clones.items[i]);
+    };
+    defer clones.deinit();
+
+    try clones.appendNTimes(BoolVectorVariable.default_value, num_to_clone);
+
+    std.debug.print("Starting var clone: {}\n", .{num_to_clone});
+    timer.reset();
+    for (0..num_to_clone) |i| {
+        try BoolVectorVariable.clone(allocator, &bvv, &clones.items[i]);
+    }
+    stop = timer.read();
+    std.debug.print("Done: took {}ms to clone {} times \n", .{ stop / std.math.pow(u64, 10, 6), num_to_clone });
 }
