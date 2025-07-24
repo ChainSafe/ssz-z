@@ -522,5 +522,6 @@ test "clone" {
     defer cloned.deinit(allocator);
 
     try std.testing.expect(&b != &cloned);
+    try std.testing.expect(b.bit_len == cloned.bit_len);
     try std.testing.expect(std.mem.eql(u8, b.data.items, cloned.data.items));
 }
