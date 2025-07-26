@@ -26,6 +26,12 @@ pub const Deposit = phase0.Deposit;
 pub const VoluntaryExit = phase0.VoluntaryExit;
 pub const SignedVoluntaryExit = phase0.SignedVoluntaryExit;
 pub const Eth1Block = phase0.Eth1Block;
+pub const HistoricalBlockRoots = phase0.HistoricalBlockRoots;
+pub const HistoricalStateRoots = phase0.HistoricalStateRoots;
+pub const ProposerSlashings = phase0.ProposerSlashings;
+pub const AttesterSlashings = ssz.VariableListType(AttesterSlashing, preset.MAX_ATTESTER_SLASHINGS_ELECTRA);
+pub const Deposits = phase0.Deposits;
+pub const VoluntaryExits = phase0.VoluntaryExits;
 
 pub const SyncAggregate = altair.SyncAggregate;
 pub const SyncCommittee = altair.SyncCommittee;
@@ -40,11 +46,13 @@ pub const PowBlock = bellatrix.PowBlock;
 pub const Withdrawal = capella.Withdrawal;
 pub const BLSToExecutionChange = capella.BLSToExecutionChange;
 pub const SignedBLSToExecutionChange = capella.SignedBLSToExecutionChange;
+pub const SignedBLSToExecutionChanges = capella.SignedBLSToExecutionChanges;
 pub const HistoricalSummary = capella.HistoricalSummary;
 
 pub const BlobIdentifier = deneb.BlobIdentifier;
 pub const ExecutionPayload = deneb.ExecutionPayload;
 pub const ExecutionPayloadHeader = deneb.ExecutionPayloadHeader;
+pub const BlobKzgCommitments = deneb.BlobKzgCommitments;
 
 pub const PendingDeposit = ssz.FixedContainerType(struct {
     pubkey: p.BLSPubkey,
@@ -104,6 +112,8 @@ pub const Attestation = ssz.VariableContainerType(struct {
     signature: p.BLSSignature,
     committee_bits: ssz.BitVectorType(preset.MAX_COMMITTEES_PER_SLOT),
 });
+
+pub const Attestations = ssz.VariableListType(Attestation, preset.MAX_ATTESTATIONS_ELECTRA);
 
 pub const IndexedAttestation = ssz.VariableContainerType(struct {
     attesting_indices: ssz.FixedListType(p.ValidatorIndex, preset.MAX_VALIDATORS_PER_COMMITTEE * preset.MAX_COMMITTEES_PER_SLOT),
@@ -176,15 +186,15 @@ pub const BeaconBlockBody = ssz.VariableContainerType(struct {
     randao_reveal: p.BLSSignature,
     eth1_data: Eth1Data,
     graffiti: p.Bytes32,
-    proposer_slashings: ssz.FixedListType(ProposerSlashing, preset.MAX_PROPOSER_SLASHINGS),
-    attester_slashings: ssz.VariableListType(AttesterSlashing, preset.MAX_ATTESTER_SLASHINGS_ELECTRA),
-    attestations: ssz.VariableListType(Attestation, preset.MAX_ATTESTATIONS_ELECTRA),
-    deposits: ssz.FixedListType(Deposit, preset.MAX_DEPOSITS),
-    voluntary_exits: ssz.FixedListType(SignedVoluntaryExit, preset.MAX_VOLUNTARY_EXITS),
+    proposer_slashings: ProposerSlashings,
+    attester_slashings: AttesterSlashings,
+    attestations: Attestations,
+    deposits: Deposits,
+    voluntary_exits: VoluntaryExits,
     sync_aggregate: SyncAggregate,
     execution_payload: ExecutionPayload,
-    bls_to_execution_changes: ssz.FixedListType(SignedBLSToExecutionChange, preset.MAX_BLS_TO_EXECUTION_CHANGES),
-    blob_kzg_commitments: ssz.FixedListType(p.KZGCommitment, preset.MAX_BLOB_COMMITMENTS_PER_BLOCK),
+    bls_to_execution_changes: SignedBLSToExecutionChanges,
+    blob_kzg_commitments: BlobKzgCommitments,
     execution_requests: ExecutionRequests,
 });
 
@@ -201,17 +211,46 @@ pub const SignedBeaconBlockHeader = ssz.FixedContainerType(struct {
     signature: p.BLSSignature,
 });
 
+pub const BlindedBeaconBlockBody = ssz.VariableContainerType(struct {
+    randao_reveal: p.BLSSignature,
+    eth1_data: Eth1Data,
+    graffiti: p.Bytes32,
+    proposer_slashings: ssz.FixedListType(ProposerSlashing, preset.MAX_PROPOSER_SLASHINGS),
+    attester_slashings: ssz.VariableListType(AttesterSlashing, preset.MAX_ATTESTER_SLASHINGS),
+    attestations: ssz.VariableListType(Attestation, preset.MAX_ATTESTATIONS_ELECTRA),
+    deposits: ssz.FixedListType(Deposit, preset.MAX_DEPOSITS),
+    voluntary_exits: ssz.FixedListType(SignedVoluntaryExit, preset.MAX_VOLUNTARY_EXITS),
+    sync_aggregate: SyncAggregate,
+    execution_payload_header: ExecutionPayloadHeader,
+    bls_to_execution_changes: ssz.FixedListType(SignedBLSToExecutionChange, preset.MAX_BLS_TO_EXECUTION_CHANGES),
+    blob_kzg_commitments: ssz.FixedListType(p.KZGCommitment, preset.MAX_BLOB_COMMITMENTS_PER_BLOCK),
+    execution_requests: ExecutionRequests,
+});
+
+pub const BlindedBeaconBlock = ssz.VariableContainerType(struct {
+    slot: p.Slot,
+    proposer_index: p.ValidatorIndex,
+    parent_root: p.Root,
+    state_root: p.Root,
+    body: BlindedBeaconBlockBody,
+});
+
+pub const SignedBlindedBeaconBlock = ssz.VariableContainerType(struct {
+    message: BlindedBeaconBlock,
+    signature: p.BLSSignature,
+});
+
 pub const BeaconState = ssz.VariableContainerType(struct {
     genesis_time: p.Uint64,
     genesis_validators_root: p.Root,
     slot: p.Slot,
     fork: Fork,
     latest_block_header: BeaconBlockHeader,
-    block_roots: ssz.FixedVectorType(p.Root, preset.SLOTS_PER_HISTORICAL_ROOT),
-    state_roots: ssz.FixedVectorType(p.Root, preset.SLOTS_PER_HISTORICAL_ROOT),
+    block_roots: HistoricalBlockRoots,
+    state_roots: HistoricalStateRoots,
     historical_roots: ssz.FixedListType(p.Root, preset.HISTORICAL_ROOTS_LIMIT),
     eth1_data: Eth1Data,
-    eth1_data_votes: ssz.FixedListType(Eth1Data, preset.EPOCHS_PER_ETH1_VOTING_PERIOD * preset.SLOTS_PER_EPOCH),
+    eth1_data_votes: phase0.Eth1DataVotes,
     eth1_deposit_index: p.Uint64,
     validators: ssz.FixedListType(Validator, preset.VALIDATOR_REGISTRY_LIMIT),
     balances: ssz.FixedListType(p.Gwei, preset.VALIDATOR_REGISTRY_LIMIT),
