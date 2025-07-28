@@ -1,4 +1,5 @@
 const std = @import("std");
+const expectEqualRootsAlloc = @import("test_utils.zig").expectEqualRootsAlloc;
 const TypeKind = @import("type_kind.zig").TypeKind;
 const BoolType = @import("bool.zig").BoolType;
 const hexToBytes = @import("hex").hexToBytes;
@@ -524,4 +525,5 @@ test "clone" {
     try std.testing.expect(&b != &cloned);
     try std.testing.expect(b.bit_len == cloned.bit_len);
     try std.testing.expect(std.mem.eql(u8, b.data.items, cloned.data.items));
+    try expectEqualRootsAlloc(Bits, allocator, b, cloned);
 }

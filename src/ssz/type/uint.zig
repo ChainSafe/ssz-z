@@ -1,5 +1,6 @@
 const std = @import("std");
 const TypeKind = @import("type_kind.zig").TypeKind;
+const expectEqualRoots = @import("test_utils.zig").expectEqualRoots;
 const Node = @import("persistent_merkle_tree").Node;
 
 pub fn UintType(comptime bits: comptime_int) type {
@@ -122,6 +123,9 @@ test "UintType - sanity" {
     var write_stream = std.json.writeStream(output_json.writer(), .{});
     defer write_stream.deinit();
     try Uint8.serializeIntoJson(&write_stream, &u);
+    var cloned: Uint8.Type = undefined;
+    try Uint8.clone(allocator, &u, &cloned);
+    try expectEqualRoots(Uint8, u, cloned);
 
     try std.testing.expectEqualSlices(u8, input_json, output_json.items);
 }

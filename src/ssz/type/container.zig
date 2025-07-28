@@ -1,4 +1,5 @@
 const std = @import("std");
+const expectEqualRootsAlloc = @import("test_utils.zig").expectEqualRootsAlloc;
 const TypeKind = @import("type_kind.zig").TypeKind;
 
 const isFixedType = @import("type_kind.zig").isFixedType;
@@ -668,5 +669,7 @@ test "clone" {
     var cloned_f: Foo.Type = undefined;
     try Foo.clone(allocator, &f, &cloned_f);
     try std.testing.expect(&cloned_f != &f);
+
+    try expectEqualRootsAlloc(Foo, allocator, f, cloned_f);
     // TODO(bing): test equals when ready
 }

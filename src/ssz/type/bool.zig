@@ -1,5 +1,6 @@
 const std = @import("std");
 const TypeKind = @import("type_kind.zig").TypeKind;
+const expectEqualRoots = @import("test_utils.zig").expectEqualRoots;
 const Node = @import("persistent_merkle_tree").Node;
 
 pub fn BoolType() type {
@@ -118,5 +119,9 @@ test "BoolType - sanity" {
     defer write_stream.deinit();
     try Bool.serializeIntoJson(&write_stream, &b);
 
+    var cloned: Bool.Type = undefined;
+    try Bool.clone(allocator, &b, &cloned);
+
+    try expectEqualRoots(Bool, b, cloned);
     try std.testing.expectEqualSlices(u8, input_json, output_json.items);
 }

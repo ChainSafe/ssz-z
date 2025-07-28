@@ -1,4 +1,5 @@
 const std = @import("std");
+const expectEqualRootsAlloc = @import("test_utils.zig").expectEqualRootsAlloc;
 const TypeKind = @import("type_kind.zig").TypeKind;
 const isBasicType = @import("type_kind.zig").isBasicType;
 const isFixedType = @import("type_kind.zig").isFixedType;
@@ -589,6 +590,7 @@ test "clone" {
     defer cloned.deinit(allocator);
     try std.testing.expect(&b != &cloned);
     try std.testing.expect(std.mem.eql(u8, b.items[0..], cloned.items[0..]));
+    try expectEqualRootsAlloc(BytesFixed, allocator, b, cloned);
 
     var bv: BytesVariable.Type = BytesVariable.default_value;
     defer bv.deinit(allocator);
@@ -598,5 +600,6 @@ test "clone" {
     try BytesVariable.clone(allocator, &bv, &cloned_v);
     defer cloned_v.deinit(allocator);
     try std.testing.expect(&bv != &cloned_v);
+    try expectEqualRootsAlloc(BytesVariable, allocator, bv, cloned_v);
     // TODO(bing): Equals test
 }
