@@ -4,10 +4,7 @@ const isFixedType = @import("type_kind.zig").isFixedType;
 const isBitVectorType = @import("bit_vector.zig").isBitVectorType;
 
 /// Tests that two values of the same type `T` hash to the same root.
-pub fn expectEqualRoots(comptime T: type, expected: anytype, actual: anytype) !void {
-    assert(@TypeOf(expected) == T.Type);
-    assert(@TypeOf(actual) == T.Type);
-
+pub fn expectEqualRoots(comptime T: type, expected: T.Type, actual: T.Type) !void {
     var expected_buf: [32]u8 = undefined;
     var actual_buf: [32]u8 = undefined;
 
@@ -20,10 +17,7 @@ pub fn expectEqualRoots(comptime T: type, expected: anytype, actual: anytype) !v
 /// Tests that two values of the same type `T` hash to the same root.
 ///
 /// Same as `expectEqualRoots`, except with allocation.
-pub fn expectEqualRootsAlloc(comptime T: type, allocator: std.mem.Allocator, expected: anytype, actual: anytype) !void {
-    assert(@TypeOf(expected) == T.Type);
-    assert(@TypeOf(actual) == T.Type);
-
+pub fn expectEqualRootsAlloc(comptime T: type, allocator: std.mem.Allocator, expected: T.Type, actual: T.Type) !void {
     var expected_buf: [32]u8 = undefined;
     var actual_buf: [32]u8 = undefined;
 
@@ -34,10 +28,7 @@ pub fn expectEqualRootsAlloc(comptime T: type, allocator: std.mem.Allocator, exp
 }
 
 /// Tests that two values of the same type `T` serialize to the same byte array.
-pub fn expectEqualSerialized(comptime T: type, expected: anytype, actual: anytype) !void {
-    assert(@TypeOf(expected) == T.Type);
-    assert(@TypeOf(actual) == T.Type);
-
+pub fn expectEqualSerialized(comptime T: type, expected: T.Type, actual: T.Type) !void {
     var expected_buf: [T.fixed_size]u8 = undefined;
     var actual_buf: [T.fixed_size]u8 = undefined;
 
@@ -49,10 +40,7 @@ pub fn expectEqualSerialized(comptime T: type, expected: anytype, actual: anytyp
 /// Tests that two values of the same type `T` serialize to the same byte array.
 ///
 /// Same as `expectEqualSerialized`, except with allocation.
-pub fn expectEqualSerializedAlloc(comptime T: type, allocator: std.mem.Allocator, expected: anytype, actual: anytype) !void {
-    assert(@TypeOf(expected) == T.Type);
-    assert(@TypeOf(actual) == T.Type);
-
+pub fn expectEqualSerializedAlloc(comptime T: type, allocator: std.mem.Allocator, expected: T.Type, actual: T.Type) !void {
     const expected_buf = try allocator.alloc(u8, T.serializedSize(&expected));
     defer allocator.free(expected_buf);
     const actual_buf = try allocator.alloc(u8, T.serializedSize(&actual));
