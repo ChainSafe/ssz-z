@@ -1,5 +1,6 @@
 const std = @import("std");
 const TypeKind = @import("type_kind.zig").TypeKind;
+const expectEqualSerialized = @import("test_utils.zig").expectEqualSerialized;
 const expectEqualRoots = @import("test_utils.zig").expectEqualRoots;
 const Node = @import("persistent_merkle_tree").Node;
 
@@ -124,4 +125,5 @@ test "BoolType - sanity" {
 
     try expectEqualRoots(Bool, b, cloned);
     try std.testing.expectEqualSlices(u8, input_json, output_json.items);
+    try expectEqualSerialized(Bool, b, cloned);
 }

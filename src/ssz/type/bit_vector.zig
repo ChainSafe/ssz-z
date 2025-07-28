@@ -1,5 +1,6 @@
 const std = @import("std");
 const expectEqualRoots = @import("test_utils.zig").expectEqualRoots;
+const expectEqualSerialized = @import("test_utils.zig").expectEqualSerialized;
 const merkleize = @import("hashing").merkleize;
 const TypeKind = @import("type_kind.zig").TypeKind;
 const BoolType = @import("bool.zig").BoolType;
@@ -312,4 +313,5 @@ test "clone" {
     try std.testing.expect(std.mem.eql(u8, b.data[0..], cloned.data[0..]));
 
     try expectEqualRoots(Bits, b, cloned);
+    try expectEqualSerialized(Bits, b, cloned);
 }

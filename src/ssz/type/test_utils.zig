@@ -32,3 +32,33 @@ pub fn expectEqualRootsAlloc(comptime T: type, allocator: std.mem.Allocator, exp
 
     try std.testing.expectEqualSlices(u8, &expected_buf, &actual_buf);
 }
+
+/// Tests that two values of the same type `T` serialize to the same byte array.
+pub fn expectEqualSerialized(comptime T: type, expected: anytype, actual: anytype) !void {
+    assert(@TypeOf(expected) == T.Type);
+    assert(@TypeOf(actual) == T.Type);
+
+    var expected_buf: [T.fixed_size]u8 = undefined;
+    var actual_buf: [T.fixed_size]u8 = undefined;
+
+    _ = T.serializeIntoBytes(&expected, &expected_buf);
+    _ = T.serializeIntoBytes(&actual, &actual_buf);
+    try std.testing.expectEqualSlices(u8, &expected_buf, &actual_buf);
+}
+
+/// Tests that two values of the same type `T` serialize to the same byte array.
+///
+/// Same as `expectEqualSerialized`, except with allocation.
+pub fn expectEqualSerializedAlloc(comptime T: type, allocator: std.mem.Allocator, expected: anytype, actual: anytype) !void {
+    assert(@TypeOf(expected) == T.Type);
+    assert(@TypeOf(actual) == T.Type);
+
+    const expected_buf = try allocator.alloc(u8, T.serializedSize(&expected));
+    defer allocator.free(expected_buf);
+    const actual_buf = try allocator.alloc(u8, T.serializedSize(&actual));
+    defer allocator.free(actual_buf);
+
+    _ = T.serializeIntoBytes(&expected, expected_buf);
+    _ = T.serializeIntoBytes(&actual, actual_buf);
+    try std.testing.expectEqualSlices(u8, expected_buf, actual_buf);
+}

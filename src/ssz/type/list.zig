@@ -1,5 +1,6 @@
 const std = @import("std");
 const expectEqualRootsAlloc = @import("test_utils.zig").expectEqualRootsAlloc;
+const expectEqualSerializedAlloc = @import("test_utils.zig").expectEqualSerializedAlloc;
 const TypeKind = @import("type_kind.zig").TypeKind;
 const isBasicType = @import("type_kind.zig").isBasicType;
 const isFixedType = @import("type_kind.zig").isFixedType;
@@ -591,6 +592,7 @@ test "clone" {
     try std.testing.expect(&b != &cloned);
     try std.testing.expect(std.mem.eql(u8, b.items[0..], cloned.items[0..]));
     try expectEqualRootsAlloc(BytesFixed, allocator, b, cloned);
+    try expectEqualSerializedAlloc(BytesFixed, allocator, b, cloned);
 
     var bv: BytesVariable.Type = BytesVariable.default_value;
     defer bv.deinit(allocator);
@@ -601,5 +603,6 @@ test "clone" {
     defer cloned_v.deinit(allocator);
     try std.testing.expect(&bv != &cloned_v);
     try expectEqualRootsAlloc(BytesVariable, allocator, bv, cloned_v);
+    try expectEqualSerializedAlloc(BytesVariable, allocator, bv, cloned_v);
     // TODO(bing): Equals test
 }
