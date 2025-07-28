@@ -1,5 +1,6 @@
 const std = @import("std");
 const expectEqualRoots = @import("test_utils.zig").expectEqualRoots;
+const expectEqualSerialized = @import("test_utils.zig").expectEqualSerialized;
 const TypeKind = @import("type_kind.zig").TypeKind;
 const UintType = @import("uint.zig").UintType;
 const hexToBytes = @import("hex").hexToBytes;
@@ -141,4 +142,5 @@ test "clone" {
     try std.testing.expect(&b != &cloned);
     try std.testing.expect(std.mem.eql(u8, b[0..], cloned[0..]));
     try expectEqualRoots(Bytes, b, cloned);
+    try expectEqualSerialized(Bytes, b, cloned);
 }
