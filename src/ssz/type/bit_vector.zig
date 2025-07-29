@@ -25,12 +25,10 @@ pub fn BitVector(comptime _length: comptime_int) type {
             return bv;
         }
 
-        pub fn toBoolArray(self: *const @This()) [length]bool {
-            var bools: [length]bool = undefined;
+        pub fn toBoolArray(self: *const @This(), out: *[length]bool) void {
             for (0..length) |i| {
-                bools[i] = self.get(i) catch unreachable;
+                out[i] = self.get(i) catch unreachable;
             }
-            return bools;
         }
 
         pub fn get(self: *const @This(), bit_index: usize) !bool {
@@ -218,7 +216,8 @@ test "BitVectorType - sanity with bools" {
     const expected_bools = [_]bool{ true, false, true, true };
     var b: Bits.Type = try Bits.Type.fromBoolArray(expected_bools);
 
-    const actual_bools = b.toBoolArray();
+    var actual_bools: [Bits.length]bool = undefined;
+    b.toBoolArray(&actual_bools);
 
     try std.testing.expectEqualSlices(bool, &expected_bools, &actual_bools);
 }
