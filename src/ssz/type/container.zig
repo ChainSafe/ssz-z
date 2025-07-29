@@ -355,6 +355,7 @@ pub fn VariableContainerType(comptime ST: type) type {
             out: *Type,
         ) !void {
             inline for (fields) |field| {
+                @field(out, field.name) = field.type.default_value;
                 try field.type.clone(allocator, &@field(value, field.name), &@field(out, field.name));
             }
         }
@@ -671,6 +672,7 @@ test "clone" {
     defer Foo.deinit(allocator, &f);
     var cloned_f: Foo.Type = undefined;
     try Foo.clone(allocator, &f, &cloned_f);
+    defer Foo.deinit(allocator, &cloned_f);
     try std.testing.expect(&cloned_f != &f);
 
     try expectEqualRootsAlloc(Foo, allocator, f, cloned_f);
