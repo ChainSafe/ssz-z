@@ -1,4 +1,6 @@
 const std = @import("std");
+const expectEqualRoots = @import("test_utils.zig").expectEqualRoots;
+const expectEqualSerialized = @import("test_utils.zig").expectEqualSerialized;
 const merkleize = @import("hashing").merkleize;
 const TypeKind = @import("type_kind.zig").TypeKind;
 const BoolType = @import("bool.zig").BoolType;
@@ -97,6 +99,10 @@ pub fn BitVectorType(comptime _length: comptime_int) type {
             var chunks = [_][32]u8{[_]u8{0} ** 32} ** ((chunk_count + 1) / 2 * 2);
             _ = serializeIntoBytes(value, @ptrCast(&chunks));
             try merkleize(@ptrCast(&chunks), chunk_depth, out);
+        }
+
+        pub fn clone(_: std.mem.Allocator, value: *const Type, out: *Type) !void {
+            out.* = value.*;
         }
 
         pub fn serializeIntoBytes(value: *const Type, out: []u8) usize {
@@ -212,4 +218,22 @@ test "BitVectorType - sanity" {
     var b_buf: [Bits.fixed_size]u8 = undefined;
     _ = Bits.serializeIntoBytes(&b, &b_buf);
     try Bits.deserializeFromBytes(&b_buf, &b);
+}
+
+test "clone" {
+    const allocator = std.testing.allocator;
+
+    const length = 44;
+    const Bits = BitVectorType(length);
+    var b: Bits.Type = Bits.default_value;
+    try b.set(0, true);
+    try b.set(length - 1, true);
+
+    var cloned: Bits.Type = undefined;
+    try Bits.clone(allocator, &b, &cloned);
+    try std.testing.expect(&b != &cloned);
+    try std.testing.expect(std.mem.eql(u8, b.data[0..], cloned.data[0..]));
+
+    try expectEqualRoots(Bits, b, cloned);
+    try expectEqualSerialized(Bits, b, cloned);
 }

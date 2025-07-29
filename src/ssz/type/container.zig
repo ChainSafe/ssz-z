@@ -1,4 +1,6 @@
 const std = @import("std");
+const expectEqualRootsAlloc = @import("test_utils.zig").expectEqualRootsAlloc;
+const expectEqualSerializedAlloc = @import("test_utils.zig").expectEqualSerializedAlloc;
 const TypeKind = @import("type_kind.zig").TypeKind;
 
 const isFixedType = @import("type_kind.zig").isFixedType;
@@ -64,6 +66,17 @@ pub fn FixedContainerType(comptime ST: type) type {
             }
             break :blk out;
         };
+
+        /// Creates a new `FixedContainerType` and clones all underlying fields in the container.
+        ///
+        /// Caller owns the memory.
+        pub fn clone(
+            _: std.mem.Allocator,
+            value: *const Type,
+            out: *Type,
+        ) !void {
+            inline for (fields) |field| @field(out, field.name) = @field(value, field.name);
+        }
 
         pub fn hashTreeRoot(value: *const Type, out: *[32]u8) !void {
             var chunks = [_][32]u8{[_]u8{0} ** 32} ** ((chunk_count + 1) / 2 * 2);
@@ -313,6 +326,20 @@ pub fn VariableContainerType(comptime ST: type) type {
                 }
             }
             try merkleize(@ptrCast(&chunks), chunk_depth, out);
+        }
+
+        /// Creates a new `VariableContainerType` and clones all underlying fields in the container.
+        ///
+        /// Caller owns the memory.
+        pub fn clone(
+            allocator: std.mem.Allocator,
+            value: *const Type,
+            out: *Type,
+        ) !void {
+            inline for (fields) |field| {
+                @field(out, field.name) = field.type.default_value;
+                try field.type.clone(allocator, &@field(value, field.name), &@field(out, field.name));
+            }
         }
 
         pub fn serializedSize(value: *const Type) usize {
@@ -604,4 +631,33 @@ test "ContainerType - sanity" {
     defer allocator.free(f_buf);
     _ = Foo.serializeIntoBytes(&f, f_buf);
     try Foo.deserializeFromBytes(allocator, f_buf, &f);
+}
+
+test "clone" {
+    const allocator = std.testing.allocator;
+    const Checkpoint = FixedContainerType(struct {
+        slot: UintType(8),
+        root: ByteVectorType(32),
+    });
+
+    var c: Checkpoint.Type = Checkpoint.default_value;
+
+    var cloned: Checkpoint.Type = undefined;
+    try Checkpoint.clone(allocator, &c, &cloned);
+    try std.testing.expect(&cloned != &c);
+    const Foo = VariableContainerType(struct {
+        a: FixedListType(UintType(8), 32),
+        b: FixedListType(UintType(8), 32),
+        c: FixedListType(UintType(8), 32),
+    });
+    var f = Foo.default_value;
+    defer Foo.deinit(allocator, &f);
+    var cloned_f: Foo.Type = undefined;
+    try Foo.clone(allocator, &f, &cloned_f);
+    defer Foo.deinit(allocator, &cloned_f);
+    try std.testing.expect(&cloned_f != &f);
+
+    try expectEqualRootsAlloc(Foo, allocator, f, cloned_f);
+    try expectEqualSerializedAlloc(Foo, allocator, f, cloned_f);
+    // TODO(bing): test equals when ready
 }

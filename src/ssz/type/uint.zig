@@ -1,5 +1,7 @@
 const std = @import("std");
 const TypeKind = @import("type_kind.zig").TypeKind;
+const expectEqualRoots = @import("test_utils.zig").expectEqualRoots;
+const expectEqualSerialized = @import("test_utils.zig").expectEqualSerialized;
 const Node = @import("persistent_merkle_tree").Node;
 
 pub fn UintType(comptime bits: comptime_int) type {
@@ -23,6 +25,10 @@ pub fn UintType(comptime bits: comptime_int) type {
         pub fn hashTreeRoot(value: *const Type, out: *[32]u8) !void {
             @memset(out, 0);
             std.mem.writeInt(Type, out[0..fixed_size], value.*, .little);
+        }
+
+        pub fn clone(_: std.mem.Allocator, value: *const Type, out: *Type) !void {
+            out.* = value.*;
         }
 
         pub fn serializeIntoBytes(value: *const Type, out: []u8) usize {
@@ -114,6 +120,10 @@ test "UintType - sanity" {
     var write_stream = std.json.writeStream(output_json.writer(), .{});
     defer write_stream.deinit();
     try Uint8.serializeIntoJson(&write_stream, &u);
+    var cloned: Uint8.Type = undefined;
+    try Uint8.clone(allocator, &u, &cloned);
+    try expectEqualRoots(Uint8, u, cloned);
+    try expectEqualSerialized(Uint8, u, cloned);
 
     try std.testing.expectEqualSlices(u8, input_json, output_json.items);
 }
