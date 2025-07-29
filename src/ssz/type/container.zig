@@ -71,13 +71,11 @@ pub fn FixedContainerType(comptime ST: type) type {
         ///
         /// Caller owns the memory.
         pub fn clone(
-            allocator: std.mem.Allocator,
+            _: std.mem.Allocator,
             value: *const Type,
             out: *Type,
         ) !void {
-            inline for (fields) |field| {
-                try field.type.clone(allocator, &@field(value, field.name), &@field(out, field.name));
-            }
+            inline for (fields) |field| @field(out, field.name) = @field(value, field.name);
         }
 
         pub fn hashTreeRoot(value: *const Type, out: *[32]u8) !void {
