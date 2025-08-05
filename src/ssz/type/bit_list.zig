@@ -9,6 +9,7 @@ const merkleize = @import("hashing").merkleize;
 const mixInLength = @import("hashing").mixInLength;
 const maxChunksToDepth = @import("hashing").maxChunksToDepth;
 const Node = @import("persistent_merkle_tree").Node;
+const computeByteToBitBooleanArray = @import("bit").computeByteToBitBooleanArray;
 
 pub fn BitList(comptime limit: comptime_int) type {
     return struct {
@@ -62,10 +63,15 @@ pub fn BitList(comptime limit: comptime_int) type {
             defer allocator.free(buffer);
             var true_bit_count: usize = 0;
 
-            for (0..self.bit_len) |i| {
-                if (self.get(i) catch unreachable) {
-                    buffer[true_bit_count] = i;
-                    true_bit_count += 1;
+            for (self.data.items, 0..) |byte, byte_index| {
+                const bits = try computeByteToBitBooleanArray(byte);
+
+                for (0..8) |bit_index| {
+                    const overall_index = byte_index * 8 + bit_index;
+                    if (bits[bit_index]) {
+                        buffer[true_bit_count] = overall_index;
+                        true_bit_count += 1;
+                    }
                 }
             }
 
@@ -435,9 +441,9 @@ test "BitListType - sanity" {
 
 test "BitListType - sanity with bools" {
     const allocator = std.testing.allocator;
-    const Bits = BitListType(8);
-    const expected_bools = [_]bool{ true, false, true, true };
-    const expected_true_bit_indexes = [_]usize{ 0, 2, 3 };
+    const Bits = BitListType(16);
+    const expected_bools = [_]bool{ true, false, true, true, false, true, false, true, true, false, true, true };
+    const expected_true_bit_indexes = [_]usize{ 0, 2, 3, 5, 7, 8, 10, 11 };
     var b: Bits.Type = try Bits.Type.fromBoolSlice(allocator, &expected_bools);
     defer b.deinit(allocator);
 
