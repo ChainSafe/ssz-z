@@ -128,10 +128,15 @@ pub fn BitList(comptime limit: comptime_int) type {
         /// Allocates and returns an `ArrayList` of indices where the bit at the index of `self` is set to `true`.
         ///
         /// Caller owns returned memory.
-        pub fn intersectValues(self: *const @This(), allocator: std.mem.Allocator, values: []const u8) !std.ArrayList(u8) {
+        pub fn intersectValues(
+            self: *const @This(),
+            comptime T: type,
+            allocator: std.mem.Allocator,
+            values: []const T,
+        ) !std.ArrayList(T) {
             if (values.len != self.bit_len) return error.InvalidSize;
 
-            var indices = try std.ArrayList(u8).initCapacity(allocator, self.bit_len);
+            var indices = try std.ArrayList(T).initCapacity(allocator, self.bit_len);
 
             const full_byte_len = self.bit_len / 8;
             for (0..full_byte_len) |i_byte| {
@@ -487,7 +492,7 @@ test "BitListType - intersectValues" {
         defer values.deinit();
         for (0..tc.bit_len) |i| values.appendAssumeCapacity(@intCast(i));
 
-        var actual = try b.intersectValues(allocator, values.items);
+        var actual = try b.intersectValues(u8, allocator, values.items);
         defer actual.deinit();
         try std.testing.expectEqualSlices(u8, tc.expected, actual.items);
     }
