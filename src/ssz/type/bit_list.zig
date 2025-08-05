@@ -124,7 +124,48 @@ pub fn BitList(comptime limit: comptime_int) type {
                 }
             }
         }
+
+        pub fn intersectValues(self: *const @This(), allocator: std.mem.Allocator, values: []const u8) !std.ArrayList(u8) {
+            if (values.len != self.bit_len) return error.InvalidSize;
+
+            var yes = try std.ArrayList(u8).initCapacity(allocator, self.bit_len);
+
+            const full_byte_len = self.bit_len / 8;
+            for (0..full_byte_len) |i_byte| {
+                const byte = self.data.items[i_byte];
+                for (0..8) |i_bit| {
+                    const mask = @as(u8, 1) << @intCast(i_bit);
+                    if ((byte & mask) != 0) {
+                        yes.appendAssumeCapacity(values[i_byte * 8 + i_bit]);
+                    }
+                }
+            }
+
+            const remainder_bits = self.bit_len % 8;
+            if (remainder_bits > 0) {
+                const byte = self.data.items[full_byte_len];
+                for (0..remainder_bits) |i_bit| {
+                    const mask = @as(u8, 1) << @intCast(i_bit);
+                    if ((byte & mask) != 0) {
+                        yes.appendAssumeCapacity(values[full_byte_len * 8 + i_bit]);
+                    }
+                }
+            }
+
+            return yes;
+        }
     };
+}
+
+pub fn byteToBoolArray(byte: u8) [8]bool {
+    var bits: [8]bool = undefined;
+    var i: usize = 0;
+    while (i < 8) : (i += 1) {
+        // Check if the bit at position (7-i) is set
+        bits[i] = (byte & (@as(u8, 1) << @intCast(7 - i))) != 0;
+    }
+
+    return bits;
 }
 
 pub fn isBitListType(ST: type) bool {
@@ -428,5 +469,33 @@ test "BitListType - sanity with bools" {
     try b.toBoolSlice(&actual_bools);
 
     try std.testing.expectEqualSlices(bool, &expected_bools, actual_bools);
-    try std.testing.expect(try b.get(0) == false);
+    try std.testing.expect(try b.get(0) == true);
+}
+
+test "BitListType - intersectValues" {
+    const TestCase = struct { expected: []const u8, bit_len: usize };
+    const test_cases = [_]TestCase{
+        .{ .expected = &[_]u8{}, .bit_len = 16 },
+        .{ .expected = &[_]u8{3}, .bit_len = 16 },
+        .{ .expected = &[_]u8{ 0, 5, 6, 10, 14 }, .bit_len = 16 },
+        .{ .expected = &[_]u8{ 0, 5, 6, 10, 14 }, .bit_len = 15 },
+    };
+
+    const allocator = std.testing.allocator;
+    const Bits = BitListType(16);
+
+    for (test_cases) |tc| {
+        var b: Bits.Type = try Bits.Type.fromBitLen(allocator, tc.bit_len);
+        defer b.deinit(allocator);
+
+        for (tc.expected) |i| try b.setAssumeCapacity(i, true);
+
+        var values = try std.ArrayList(u8).initCapacity(allocator, tc.bit_len);
+        defer values.deinit();
+        for (0..tc.bit_len) |i| values.appendAssumeCapacity(@intCast(i));
+
+        var actual = try b.intersectValues(allocator, values.items);
+        defer actual.deinit();
+        try std.testing.expectEqualSlices(u8, tc.expected, actual.items);
+    }
 }
