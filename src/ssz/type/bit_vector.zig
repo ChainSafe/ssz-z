@@ -59,6 +59,36 @@ pub fn BitVector(comptime _length: comptime_int) type {
             @memcpy(out.*, buffer[0..true_bit_count]);
         }
 
+        pub fn getSingleTrueBit(self: *const @This(), out: *?usize) !void {
+            var found_index: ?usize = null;
+
+            for (0..byte_len) |byte_index| {
+                const byte = self.data[byte_index];
+
+                if (byte == 0) {
+                    continue;
+                }
+
+                const bits = try computeByteToBitBooleanArray(byte);
+
+                for (0..8) |bit_index| {
+                    const overall_index = byte_index * 8 + bit_index;
+                    if (bits[bit_index]) {
+                        if (found_index != null) {
+                            out.* = null; // more than one true bit found
+                            return;
+                        } else {
+                            found_index = overall_index;
+                        }
+                    }
+                }
+            }
+            if (found_index == null) {
+                out.* = null; // No true bits found
+            }
+            out.* = found_index;
+        }
+
         pub fn get(self: *const @This(), bit_index: usize) !bool {
             if (bit_index >= length) {
                 return error.OutOfRange;

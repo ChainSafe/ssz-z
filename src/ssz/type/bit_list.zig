@@ -79,6 +79,36 @@ pub fn BitList(comptime limit: comptime_int) type {
             @memcpy(out.*, buffer[0..true_bit_count]);
         }
 
+        pub fn getSingleTrueBit(self: *const @This(), out: *?usize) !void {
+            var found_index: ?usize = null;
+
+            for (0..self.data.items.len) |byte_index| {
+                const byte = self.data.items[byte_index];
+
+                if (byte == 0) {
+                    continue;
+                }
+
+                const bits = try computeByteToBitBooleanArray(byte);
+
+                for (0..8) |bit_index| {
+                    const overall_index = byte_index * 8 + bit_index;
+                    if (bits[bit_index]) {
+                        if (found_index != null) {
+                            out.* = null; // more than one true bit found
+                            return;
+                        } else {
+                            found_index = overall_index;
+                        }
+                    }
+                }
+            }
+            if (found_index == null) {
+                out.* = null; // No true bits found
+            }
+            out.* = found_index;
+        }
+
         pub fn deinit(self: *@This(), allocator: std.mem.Allocator) void {
             self.data.deinit(allocator);
         }
