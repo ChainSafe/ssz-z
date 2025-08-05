@@ -64,6 +64,8 @@ const PresetMainnet = struct {
     pub const MAX_DEPOSIT_REQUESTS_PER_PAYLOAD = 8192;
     pub const MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD = 16;
     pub const MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD = 2;
+    pub const MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP = 8;
+    pub const MIN_SLASHING_PENALTY_QUOTIENT_ELECTRA = 4096;
 };
 
 const PresetMinimal = struct {
@@ -130,6 +132,8 @@ const PresetMinimal = struct {
     pub const MAX_DEPOSIT_REQUESTS_PER_PAYLOAD = 8192;
     pub const MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD = 16;
     pub const MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD = 2;
+    pub const MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP = 2;
+    pub const MIN_SLASHING_PENALTY_QUOTIENT_ELECTRA = 4096;
 };
 
 const preset_str = @import("build_options").preset;
