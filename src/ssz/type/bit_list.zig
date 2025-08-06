@@ -127,7 +127,7 @@ pub fn BitList(comptime limit: comptime_int) type {
 
         /// Allocates and returns an `ArrayList` of indices where the bit at the index of `self` is set to `true`.
         ///
-        /// Caller owns returned memory.
+        /// Caller must call `deinit` on the returned list
         pub fn intersectValues(
             self: *const @This(),
             comptime T: type,
