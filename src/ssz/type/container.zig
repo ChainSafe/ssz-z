@@ -79,11 +79,7 @@ pub fn FixedContainerType(comptime ST: type) type {
         /// Creates a new `FixedContainerType` and clones all underlying fields in the container.
         ///
         /// Caller owns the memory.
-        pub fn clone(
-            _: std.mem.Allocator,
-            value: *const Type,
-            out: *Type,
-        ) !void {
+        pub fn clone(value: *const Type, out: *Type) !void {
             inline for (fields) |field| @field(out, field.name) = @field(value, field.name);
         }
 
@@ -356,7 +352,11 @@ pub fn VariableContainerType(comptime ST: type) type {
         ) !void {
             inline for (fields) |field| {
                 @field(out, field.name) = field.type.default_value;
-                try field.type.clone(allocator, &@field(value, field.name), &@field(out, field.name));
+                if (comptime isFixedType(field.type)) {
+                    try field.type.clone(&@field(value, field.name), &@field(out, field.name));
+                } else {
+                    try field.type.clone(allocator, &@field(value, field.name), &@field(out, field.name));
+                }
             }
         }
 
@@ -661,7 +661,7 @@ test "clone" {
     var c: Checkpoint.Type = Checkpoint.default_value;
 
     var cloned: Checkpoint.Type = undefined;
-    try Checkpoint.clone(allocator, &c, &cloned);
+    try Checkpoint.clone(&c, &cloned);
     try std.testing.expect(&cloned != &c);
     const Foo = VariableContainerType(struct {
         a: FixedListType(UintType(8), 32),

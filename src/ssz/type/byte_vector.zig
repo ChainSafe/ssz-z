@@ -43,7 +43,7 @@ pub fn ByteVectorType(comptime _length: comptime_int) type {
             try merkleize(@ptrCast(&chunks), chunk_depth, out);
         }
 
-        pub fn clone(_: std.mem.Allocator, value: *const Type, out: *Type) !void {
+        pub fn clone(value: *const Type, out: *Type) !void {
             out.* = value.*;
         }
 
@@ -135,14 +135,12 @@ pub fn ByteVectorType(comptime _length: comptime_int) type {
 }
 
 test "clone" {
-    const allocator = std.testing.allocator;
-
     const length = 44;
     const Bytes = ByteVectorType(length);
 
     var b = [_]u8{1} ** length;
     var cloned: [44]u8 = undefined;
-    try Bytes.clone(allocator, &b, &cloned);
+    try Bytes.clone(&b, &cloned);
     try std.testing.expect(&b != &cloned);
     try std.testing.expect(std.mem.eql(u8, b[0..], cloned[0..]));
     try expectEqualRoots(Bytes, b, cloned);

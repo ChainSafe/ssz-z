@@ -52,8 +52,8 @@ pub fn FixedVectorType(comptime ST: type, comptime _length: comptime_int) type {
             try merkleize(@ptrCast(&chunks), chunk_depth, out);
         }
 
-        pub fn clone(allocator: std.mem.Allocator, value: *const Type, out: *Type) !void {
-            for (0..length) |i| try Element.clone(allocator, &value[i], &out[i]);
+        pub fn clone(value: *const Type, out: *Type) !void {
+            for (0..length) |i| try Element.clone(&value[i], &out[i]);
         }
 
         pub fn serializeIntoBytes(value: *const Type, out: []u8) usize {
@@ -367,7 +367,7 @@ test "clone" {
     var bvf: BoolVectorFixed.Type = BoolVectorFixed.default_value;
 
     var cloned: BoolVectorFixed.Type = undefined;
-    try BoolVectorFixed.clone(allocator, &bvf, &cloned);
+    try BoolVectorFixed.clone(&bvf, &cloned);
     try expectEqualRoots(BoolVectorFixed, bvf, cloned);
     try expectEqualSerialized(BoolVectorFixed, bvf, cloned);
 

@@ -16,7 +16,7 @@ pub fn BoolType() type {
             return a.* == b.*;
         }
 
-        pub fn clone(_: std.mem.Allocator, value: *const Type, out: *Type) !void {
+        pub fn clone(value: *const Type, out: *Type) !void {
             out.* = value.*;
         }
 
@@ -121,7 +121,7 @@ test "BoolType - sanity" {
     try Bool.serializeIntoJson(&write_stream, &b);
 
     var cloned: Bool.Type = undefined;
-    try Bool.clone(allocator, &b, &cloned);
+    try Bool.clone(&b, &cloned);
 
     try expectEqualRoots(Bool, b, cloned);
     try std.testing.expectEqualSlices(u8, input_json, output_json.items);

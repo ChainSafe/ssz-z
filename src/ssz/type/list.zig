@@ -78,7 +78,8 @@ pub fn FixedListType(comptime ST: type, comptime _limit: comptime_int) type {
 
             for (value.items, 0..) |v, i| {
                 var e: Element.Type = undefined;
-                try Element.clone(allocator, &v, &e);
+                try Element.clone(&v, &e);
+
                 out.items[i] = e;
             }
         }
@@ -330,10 +331,6 @@ pub fn VariableListType(comptime ST: type, comptime _limit: comptime_int) type {
         /// Caller owns the memory.
         pub fn clone(allocator: std.mem.Allocator, value: *const Type, out: *Type) !void {
             try out.resize(allocator, value.items.len);
-            errdefer {
-                for (0..out.items.len) |i| Element.deinit(allocator, &out.items[i]);
-                out.clearRetainingCapacity();
-            }
 
             for (value.items, 0..) |v, i| {
                 var e: Element.Type = undefined;

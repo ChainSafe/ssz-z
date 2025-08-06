@@ -31,7 +31,7 @@ pub fn UintType(comptime bits: comptime_int) type {
             std.mem.writeInt(Type, out[0..fixed_size], value.*, .little);
         }
 
-        pub fn clone(_: std.mem.Allocator, value: *const Type, out: *Type) !void {
+        pub fn clone(value: *const Type, out: *Type) !void {
             out.* = value.*;
         }
 
@@ -125,7 +125,7 @@ test "UintType - sanity" {
     defer write_stream.deinit();
     try Uint8.serializeIntoJson(&write_stream, &u);
     var cloned: Uint8.Type = undefined;
-    try Uint8.clone(allocator, &u, &cloned);
+    try Uint8.clone(&u, &cloned);
     try expectEqualRoots(Uint8, u, cloned);
     try expectEqualSerialized(Uint8, u, cloned);
 
