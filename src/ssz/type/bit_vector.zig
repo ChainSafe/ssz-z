@@ -86,7 +86,7 @@ pub fn BitVector(comptime _length: comptime_int) type {
             self: *const @This(),
             comptime T: type,
             allocator: std.mem.Allocator,
-            values: []const T,
+            values: *const [length]T,
         ) !std.ArrayList(T) {
             var indices = try std.ArrayList(T).initCapacity(allocator, byte_len * 8);
 
@@ -280,11 +280,10 @@ test "BitVectorType - intersectValues" {
 
         for (tc.expected) |i| try b.set(i, true);
 
-        var values = try std.ArrayList(u8).initCapacity(allocator, tc.bit_len);
-        defer values.deinit();
-        for (0..tc.bit_len) |i| values.appendAssumeCapacity(@intCast(i));
+        var values: [16]u8 = undefined;
+        for (0..tc.bit_len) |i| values[i] = @intCast(i);
 
-        var actual = try b.intersectValues(u8, allocator, values.items);
+        var actual = try b.intersectValues(u8, allocator, &values);
         defer actual.deinit();
         try std.testing.expectEqualSlices(u8, tc.expected, actual.items);
     }
