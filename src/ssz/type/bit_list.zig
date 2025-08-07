@@ -137,27 +137,31 @@ pub fn BitList(comptime limit: comptime_int) type {
             if (values.len != self.bit_len) return error.InvalidSize;
 
             var indices = try std.ArrayList(T).initCapacity(allocator, self.bit_len);
-
             const full_byte_len = self.bit_len / 8;
+            const remainder_bits = self.bit_len % 8;
             for (0..full_byte_len) |i_byte| {
-                const byte = self.data.items[i_byte];
-                for (0..8) |i_bit| {
-                    const mask = @as(u8, 1) << @intCast(i_bit);
-                    if ((byte & mask) != 0) {
-                        indices.appendAssumeCapacity(values[i_byte * 8 + i_bit]);
-                    }
+                var b = self.data.items[i_byte];
+                // Kernighan's algorithm to count the set bits instead of going through 0..8 for every byte
+                while (b != 0) {
+                    const lsb: u8 = @ctz(b); // Get the index of least significant bit
+                    const bit_index = i_byte * 8 + lsb;
+                    indices.appendAssumeCapacity(values[bit_index]);
+                    // The `b - 1` flips the bits starting from `lsb` index
+                    // And `&` will reset the last bit at `lsb` index
+                    b &= b - 1;
                 }
             }
-
-            const remainder_bits = self.bit_len % 8;
-            if (remainder_bits > 0) {
-                const byte = self.data.items[full_byte_len];
-                for (0..remainder_bits) |i_bit| {
-                    const mask = @as(u8, 1) << @intCast(i_bit);
-                    if ((byte & mask) != 0) {
-                        indices.appendAssumeCapacity(values[full_byte_len * 8 + i_bit]);
-                    }
-                }
+            if (remainder_bits <= 0) return indices;
+            const tail_mask: u8 = (@as(u8, 1) << @intCast(remainder_bits)) - 1;
+            var b = self.data.items[full_byte_len] & tail_mask;
+            // Kernighan's algorithm to count the set bits instead of going through 0..8 for every byte
+            while (b != 0) {
+                const lsb: u8 = @ctz(b); // Get the index of least significant bit
+                const bit_index = full_byte_len * 8 + lsb;
+                indices.appendAssumeCapacity(values[bit_index]);
+                // The `b - 1` flips the bits starting from `lab` index
+                // And `&` will reset the last bit at `lsb` index
+                b &= b - 1;
             }
 
             return indices;

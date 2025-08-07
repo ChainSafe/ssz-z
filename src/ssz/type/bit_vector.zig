@@ -91,12 +91,15 @@ pub fn BitVector(comptime _length: comptime_int) type {
             var indices = try std.ArrayList(T).initCapacity(allocator, byte_len * 8);
 
             for (0..byte_len) |i_byte| {
-                const byte = self.data[i_byte];
-                for (0..8) |i_bit| {
-                    const mask = @as(u8, 1) << @intCast(i_bit);
-                    if ((byte & mask) != 0) {
-                        indices.appendAssumeCapacity(values[i_byte * 8 + i_bit]);
-                    }
+                var b = self.data[i_byte];
+                // Kernighan's algorithm to count the set bits instead of going through 0..8 for every byte
+                while (b != 0) {
+                    const lsb: usize = @as(u8, @ctz(b)); // Get the index of least significant bit
+                    const bit_index = i_byte * 8 + lsb;
+                    indices.appendAssumeCapacity(values[bit_index]);
+                    // The `b - 1` flips the bits starting from `lsb` index
+                    // And `&` will reset the last bit at `lsb` index
+                    b &= b - 1;
                 }
             }
             return indices;
