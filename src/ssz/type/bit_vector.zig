@@ -141,7 +141,7 @@ pub fn BitVectorType(comptime _length: comptime_int) type {
             try merkleize(@ptrCast(&chunks), chunk_depth, out);
         }
 
-        pub fn clone(_: std.mem.Allocator, value: *const Type, out: *Type) !void {
+        pub fn clone(value: *const Type, out: *Type) !void {
             out.* = value.*;
         }
 
@@ -299,8 +299,6 @@ test "BitVectorType - intersectValues" {
 }
 
 test "clone" {
-    const allocator = std.testing.allocator;
-
     const length = 44;
     const Bits = BitVectorType(length);
     var b: Bits.Type = Bits.default_value;
@@ -308,7 +306,7 @@ test "clone" {
     try b.set(length - 1, true);
 
     var cloned: Bits.Type = undefined;
-    try Bits.clone(allocator, &b, &cloned);
+    try Bits.clone(&b, &cloned);
     try std.testing.expect(&b != &cloned);
     try std.testing.expect(std.mem.eql(u8, b.data[0..], cloned.data[0..]));
 
