@@ -80,7 +80,7 @@ pub fn FixedContainerType(comptime ST: type) type {
         ///
         /// Caller owns the memory.
         pub fn clone(value: *const Type, out: *Type) !void {
-            inline for (fields) |field| @field(out, field.name) = @field(value, field.name);
+            out.* = value.*;
         }
 
         pub fn hashTreeRoot(value: *const Type, out: *[32]u8) !void {

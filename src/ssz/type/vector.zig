@@ -53,7 +53,7 @@ pub fn FixedVectorType(comptime ST: type, comptime _length: comptime_int) type {
         }
 
         pub fn clone(value: *const Type, out: *Type) !void {
-            for (0..length) |i| try Element.clone(&value[i], &out[i]);
+            out.* = value.*;
         }
 
         pub fn serializeIntoBytes(value: *const Type, out: []u8) usize {
