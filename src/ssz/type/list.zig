@@ -77,10 +77,7 @@ pub fn FixedListType(comptime ST: type, comptime _limit: comptime_int) type {
             try out.resize(allocator, value.items.len);
 
             for (value.items, 0..) |v, i| {
-                var e: Element.Type = undefined;
-                try Element.clone(&v, &e);
-
-                out.items[i] = e;
+                try Element.clone(&v, &out.items[i]);
             }
         }
 
