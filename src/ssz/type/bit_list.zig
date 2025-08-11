@@ -58,9 +58,10 @@ pub fn BitList(comptime limit: comptime_int) type {
             }
         }
 
-        pub fn getTrueBitIndexes(self: *const @This(), allocator: std.mem.Allocator, out: *[]usize) !void {
-            var buffer = try allocator.alloc(usize, self.bit_len);
-            defer allocator.free(buffer);
+        pub fn getTrueBitIndexes(self: *const @This(), out: []usize) !usize {
+            if (out.len < self.bit_len) {
+                return error.InvalidSize;
+            }
             var true_bit_count: usize = 0;
 
             for (self.data.items, 0..) |byte, byte_index| {
@@ -69,14 +70,13 @@ pub fn BitList(comptime limit: comptime_int) type {
                 for (0..8) |bit_index| {
                     const overall_index = byte_index * 8 + bit_index;
                     if (bits[bit_index]) {
-                        buffer[true_bit_count] = overall_index;
+                        out[true_bit_count] = overall_index;
                         true_bit_count += 1;
                     }
                 }
             }
 
-            out.* = try allocator.alloc(usize, true_bit_count);
-            @memcpy(out.*, buffer[0..true_bit_count]);
+            return true_bit_count;
         }
 
         pub fn deinit(self: *@This(), allocator: std.mem.Allocator) void {
@@ -453,9 +453,8 @@ test "BitListType - sanity with bools" {
 
     try std.testing.expectEqualSlices(bool, &expected_bools, actual_bools);
 
-    var true_bit_indexes: []usize = undefined;
-    defer allocator.free(true_bit_indexes);
-    try b.getTrueBitIndexes(allocator, &true_bit_indexes);
+    var true_bit_indexes: [Bits.limit]usize = undefined;
+    const true_bit_count = try b.getTrueBitIndexes(true_bit_indexes[0..]);
 
-    try std.testing.expectEqualSlices(usize, &expected_true_bit_indexes, true_bit_indexes);
+    try std.testing.expectEqualSlices(usize, &expected_true_bit_indexes, true_bit_indexes[0..true_bit_count]);
 }
