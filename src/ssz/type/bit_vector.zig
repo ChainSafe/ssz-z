@@ -39,6 +39,9 @@ pub fn BitVector(comptime _length: comptime_int) type {
         }
 
         pub fn getTrueBitIndexes(self: *const @This(), out: []usize) !usize {
+            if (out.len < self.bit_len) {
+                return error.InvalidSize;
+            }
             var true_bit_count: usize = 0;
 
             for (0..byte_len) |byte_index| {
