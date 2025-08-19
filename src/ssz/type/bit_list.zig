@@ -455,6 +455,7 @@ test "BitListType - sanity" {
 
     _ = Bits.serializeIntoBytes(&b, b_buf);
     try Bits.deserializeFromBytes(allocator, b_buf, &b);
+
     try std.testing.expect(try b.get(0) == false);
 }
 
