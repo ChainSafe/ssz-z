@@ -146,6 +146,48 @@ pub fn BitList(comptime limit: comptime_int) type {
                 }
             }
         }
+
+        /// Allocates and returns an `ArrayList` of indices where the bit at the index of `self` is set to `true`.
+        ///
+        /// Caller must call `deinit` on the returned list
+        pub fn intersectValues(
+            self: *const @This(),
+            comptime T: type,
+            allocator: std.mem.Allocator,
+            values: []const T,
+        ) !std.ArrayList(T) {
+            if (values.len != self.bit_len) return error.InvalidSize;
+
+            var indices = try std.ArrayList(T).initCapacity(allocator, self.bit_len);
+            const full_byte_len = self.bit_len / 8;
+            const remainder_bits = self.bit_len % 8;
+            for (0..full_byte_len) |i_byte| {
+                var b = self.data.items[i_byte];
+                // Kernighan's algorithm to count the set bits instead of going through 0..8 for every byte
+                while (b != 0) {
+                    const lsb: u8 = @ctz(b); // Get the index of least significant bit
+                    const bit_index = i_byte * 8 + lsb;
+                    indices.appendAssumeCapacity(values[bit_index]);
+                    // The `b - 1` flips the bits starting from `lsb` index
+                    // And `&` will reset the last bit at `lsb` index
+                    b &= b - 1;
+                }
+            }
+            if (remainder_bits <= 0) return indices;
+            const tail_mask: u8 = (@as(u8, 1) << @intCast(remainder_bits)) - 1;
+            var b = self.data.items[full_byte_len] & tail_mask;
+            // Kernighan's algorithm to count the set bits instead of going through 0..8 for every byte
+            while (b != 0) {
+                const lsb: u8 = @ctz(b); // Get the index of least significant bit
+                const bit_index = full_byte_len * 8 + lsb;
+                indices.appendAssumeCapacity(values[bit_index]);
+                // The `b - 1` flips the bits starting from `lab` index
+                // And `&` will reset the last bit at `lsb` index
+                b &= b - 1;
+            }
+
+            return indices;
+        }
     };
 }
 
@@ -452,9 +494,38 @@ test "BitListType - sanity with bools" {
     try b.toBoolSlice(&actual_bools);
 
     try std.testing.expectEqualSlices(bool, &expected_bools, actual_bools);
+    try std.testing.expect(try b.get(0) == true);
 
     var true_bit_indexes: [Bits.limit]usize = undefined;
     const true_bit_count = try b.getTrueBitIndexes(true_bit_indexes[0..]);
 
     try std.testing.expectEqualSlices(usize, &expected_true_bit_indexes, true_bit_indexes[0..true_bit_count]);
+}
+
+test "BitListType - intersectValues" {
+    const TestCase = struct { expected: []const u8, bit_len: usize };
+    const test_cases = [_]TestCase{
+        .{ .expected = &[_]u8{}, .bit_len = 16 },
+        .{ .expected = &[_]u8{3}, .bit_len = 16 },
+        .{ .expected = &[_]u8{ 0, 5, 6, 10, 14 }, .bit_len = 16 },
+        .{ .expected = &[_]u8{ 0, 5, 6, 10, 14 }, .bit_len = 15 },
+    };
+
+    const allocator = std.testing.allocator;
+    const Bits = BitListType(16);
+
+    for (test_cases) |tc| {
+        var b: Bits.Type = try Bits.Type.fromBitLen(allocator, tc.bit_len);
+        defer b.deinit(allocator);
+
+        for (tc.expected) |i| try b.setAssumeCapacity(i, true);
+
+        var values = try std.ArrayList(u8).initCapacity(allocator, tc.bit_len);
+        defer values.deinit();
+        for (0..tc.bit_len) |i| values.appendAssumeCapacity(@intCast(i));
+
+        var actual = try b.intersectValues(u8, allocator, values.items);
+        defer actual.deinit();
+        try std.testing.expectEqualSlices(u8, tc.expected, actual.items);
+    }
 }
