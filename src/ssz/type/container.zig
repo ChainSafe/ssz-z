@@ -351,10 +351,10 @@ pub fn VariableContainerType(comptime ST: type) type {
             out: *Type,
         ) !void {
             inline for (fields) |field| {
-                @field(out, field.name) = field.type.default_value;
                 if (comptime isFixedType(field.type)) {
                     try field.type.clone(&@field(value, field.name), &@field(out, field.name));
                 } else {
+                    @field(out, field.name) = field.type.default_value;
                     try field.type.clone(allocator, &@field(value, field.name), &@field(out, field.name));
                 }
             }
