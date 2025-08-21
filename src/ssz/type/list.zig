@@ -328,12 +328,8 @@ pub fn VariableListType(comptime ST: type, comptime _limit: comptime_int) type {
         /// Caller owns the memory.
         pub fn clone(allocator: std.mem.Allocator, value: *const Type, out: *Type) !void {
             try out.resize(allocator, value.items.len);
-
-            for (value.items, 0..) |v, i| {
-                var e: Element.Type = undefined;
-                try Element.clone(allocator, &v, &e);
-                out.items[i] = e;
-            }
+            for (0..value.items.len) |i|
+                try Element.clone(allocator, &value.items[i], &out.items[i]);
         }
 
         pub fn chunkCount(value: *const Type) usize {
