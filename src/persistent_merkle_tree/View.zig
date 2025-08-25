@@ -2,6 +2,7 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const Node = @import("Node.zig");
 const Gindex = @import("gindex.zig").Gindex;
+const Depth = @import("hashing").Depth;
 
 const View = @This();
 
@@ -101,7 +102,7 @@ pub const Pool = struct {
             }
         }
         // unref the root node
-        self.unref(view.root_node);
+        self.node_pool.unref(view.root_node);
         // push to the free list
         view.next_free = self.next_free;
         self.next_free = view_id;
@@ -201,11 +202,11 @@ pub const Id = enum(u32) {
         }
     }
 
-    pub fn getNodeAtDepth(self: View.Id, pool: *Pool, depth: Node.Depth, index: usize) Node.Error!Node.Id {
+    pub fn getNodeAtDepth(self: View.Id, pool: *Pool, depth: Depth, index: usize) Node.Error!Node.Id {
         return pool.views.items[@intFromEnum(self)].root_node.getNodeAtDepth(pool.node_pool, depth, index);
     }
 
-    pub fn setNodeAtDepth(self: View.Id, pool: *Pool, depth: Node.Depth, index: usize, node: Node.Id) Node.Error!void {
+    pub fn setNodeAtDepth(self: View.Id, pool: *Pool, depth: Depth, index: usize, node: Node.Id) Node.Error!void {
         const view = &pool.views.items[@intFromEnum(self)];
         const new_root = try view.root_node.setNodeAtDepth(pool.node_pool, depth, index, node);
 
@@ -222,11 +223,11 @@ pub const Id = enum(u32) {
         }
     }
 
-    pub fn getNodesAtDepth(self: View.Id, pool: *Pool, depth: Node.Depth, start_index: usize, out: []Node.Id) Node.Error!void {
+    pub fn getNodesAtDepth(self: View.Id, pool: *Pool, depth: Depth, start_index: usize, out: []Node.Id) Node.Error!void {
         try pool.views.items[@intFromEnum(self)].root_node.getNodesAtDepth(pool.node_pool, depth, start_index, out);
     }
 
-    pub fn setNodesAtDepth(self: View.Id, pool: *Pool, depth: Node.Depth, indices: []usize, nodes: []Node.Id) Node.Error!void {
+    pub fn setNodesAtDepth(self: View.Id, pool: *Pool, depth: Depth, indices: []usize, nodes: []Node.Id) Node.Error!void {
         const view = &pool.views.items[@intFromEnum(self)];
         const new_root = try view.root_node.setNodesAtDepth(pool.node_pool, depth, indices, nodes);
 
