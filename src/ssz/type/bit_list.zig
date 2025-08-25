@@ -11,6 +11,7 @@ const merkleize = @import("hashing").merkleize;
 const mixInLength = @import("hashing").mixInLength;
 const maxChunksToDepth = @import("hashing").maxChunksToDepth;
 const Node = @import("persistent_merkle_tree").Node;
+const computeByteToBitBooleanArray = @import("bit").computeByteToBitBooleanArray;
 
 pub fn BitList(comptime limit: comptime_int) type {
     return struct {
@@ -57,6 +58,27 @@ pub fn BitList(comptime limit: comptime_int) type {
             for (0..self.bit_len) |i| {
                 out.*[i] = self.get(i) catch unreachable;
             }
+        }
+
+        pub fn getTrueBitIndexes(self: *const @This(), out: []usize) !usize {
+            if (out.len < self.bit_len) {
+                return error.InvalidSize;
+            }
+            var true_bit_count: usize = 0;
+
+            for (self.data.items, 0..) |byte, byte_index| {
+                const bits = try computeByteToBitBooleanArray(byte);
+
+                for (0..8) |bit_index| {
+                    const overall_index = byte_index * 8 + bit_index;
+                    if (bits[bit_index]) {
+                        out[true_bit_count] = overall_index;
+                        true_bit_count += 1;
+                    }
+                }
+            }
+
+            return true_bit_count;
         }
 
         pub fn deinit(self: *@This(), allocator: std.mem.Allocator) void {
@@ -471,8 +493,9 @@ test "BitListType - sanity" {
 
 test "BitListType - sanity with bools" {
     const allocator = std.testing.allocator;
-    const Bits = BitListType(8);
-    const expected_bools = [_]bool{ true, false, true, true };
+    const Bits = BitListType(16);
+    const expected_bools = [_]bool{ true, false, true, true, false, true, false, true, true, false, true, true };
+    const expected_true_bit_indexes = [_]usize{ 0, 2, 3, 5, 7, 8, 10, 11 };
     var b: Bits.Type = try Bits.Type.fromBoolSlice(allocator, &expected_bools);
     defer b.deinit(allocator);
 
@@ -482,6 +505,11 @@ test "BitListType - sanity with bools" {
 
     try std.testing.expectEqualSlices(bool, &expected_bools, actual_bools);
     try std.testing.expect(try b.get(0) == true);
+
+    var true_bit_indexes: [Bits.limit]usize = undefined;
+    const true_bit_count = try b.getTrueBitIndexes(true_bit_indexes[0..]);
+
+    try std.testing.expectEqualSlices(usize, &expected_true_bit_indexes, true_bit_indexes[0..true_bit_count]);
 }
 
 test "BitListType - intersectValues" {

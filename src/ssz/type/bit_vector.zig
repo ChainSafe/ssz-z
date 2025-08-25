@@ -9,6 +9,7 @@ const hexLenFromBytes = @import("hex").hexLenFromBytes;
 const bytesToHex = @import("hex").bytesToHex;
 const maxChunksToDepth = @import("hashing").maxChunksToDepth;
 const Node = @import("persistent_merkle_tree").Node;
+const computeByteToBitBooleanArray = @import("bit").computeByteToBitBooleanArray;
 
 pub fn BitVector(comptime _length: comptime_int) type {
     const byte_len = std.math.divCeil(usize, _length, 8) catch unreachable;
@@ -37,6 +38,28 @@ pub fn BitVector(comptime _length: comptime_int) type {
             for (0..length) |i| {
                 out[i] = self.get(i) catch unreachable;
             }
+        }
+
+        pub fn getTrueBitIndexes(self: *const @This(), out: []usize) !usize {
+            if (out.len < length) {
+                return error.InvalidSize;
+            }
+            var true_bit_count: usize = 0;
+
+            for (0..byte_len) |byte_index| {
+                const byte = self.data[byte_index];
+                const bits = try computeByteToBitBooleanArray(byte);
+
+                for (0..8) |bit_index| {
+                    const overall_index = byte_index * 8 + bit_index;
+                    if (bits[bit_index]) {
+                        out[true_bit_count] = overall_index;
+                        true_bit_count += 1;
+                    }
+                }
+            }
+
+            return true_bit_count;
         }
 
         pub fn get(self: *const @This(), bit_index: usize) !bool {
@@ -262,14 +285,20 @@ test "BitVectorType - sanity" {
 }
 
 test "BitVectorType - sanity with bools" {
-    const Bits = BitVectorType(4);
-    const expected_bools = [_]bool{ true, false, true, true };
+    const Bits = BitVectorType(16);
+    const expected_bools = [_]bool{ true, false, true, true, false, true, false, true, true, false, true, true, false, false, true, false };
+    const expected_true_bit_indexes = [_]usize{ 0, 2, 3, 5, 7, 8, 10, 11, 14 };
     var b: Bits.Type = try Bits.Type.fromBoolArray(expected_bools);
 
     var actual_bools: [Bits.length]bool = undefined;
     b.toBoolArray(&actual_bools);
 
     try std.testing.expectEqualSlices(bool, &expected_bools, &actual_bools);
+
+    var true_bit_indexes: [Bits.length]usize = undefined;
+    const true_bit_count = try b.getTrueBitIndexes(true_bit_indexes[0..]);
+
+    try std.testing.expectEqualSlices(usize, &expected_true_bit_indexes, true_bit_indexes[0..true_bit_count]);
 }
 
 test "BitVectorType - intersectValues" {
