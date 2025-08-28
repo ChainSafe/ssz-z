@@ -52,10 +52,6 @@
             .root_source_file = "src/hex.zig",
             .private = true,
         },
-        .bit = .{
-            .root_source_file = "src/bit.zig",
-            .private = true,
-        },
         .hashing = .{
             .root_source_file = "src/hashing/root.zig",
             .imports = .{ .build_options, .hex, .hashtree },
@@ -66,7 +62,7 @@
         },
         .ssz = .{
             .root_source_file = "src/ssz/root.zig",
-            .imports = .{ .build_options, .hex, .bit, .hashing, .persistent_merkle_tree },
+            .imports = .{ .build_options, .hex, .hashing, .persistent_merkle_tree },
         },
         .consensus_types = .{
             .root_source_file = "src/consensus_types/root.zig",
@@ -146,21 +142,21 @@
         .int = .{
             .root_module = .{
                 .root_source_file = "test/int/root.zig",
-                .imports = .{ .hex, .bit, .ssz, .persistent_merkle_tree },
+                .imports = .{ .hex, .ssz, .persistent_merkle_tree },
             },
             .filters = .{},
         },
         .generic_spec_tests = .{
             .root_module = .{
                 .root_source_file = "test/spec/generic_tests.zig",
-                .imports = .{ .hex, .bit, .snappy, .persistent_merkle_tree, .ssz, .spec_test_options, .yaml },
+                .imports = .{ .hex, .snappy, .persistent_merkle_tree, .ssz, .spec_test_options, .yaml },
             },
             .filters = .{},
         },
         .static_spec_tests = .{
             .root_module = .{
                 .root_source_file = "test/spec/static_tests.zig",
-                .imports = .{ .hex, .bit, .snappy, .persistent_merkle_tree, .ssz, .build_options, .spec_test_options, .consensus_types, .yaml },
+                .imports = .{ .hex, .snappy, .persistent_merkle_tree, .ssz, .build_options, .spec_test_options, .consensus_types, .yaml },
             },
             .filters = .{},
         },

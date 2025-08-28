@@ -7,7 +7,6 @@ const hexLenFromBytes = @import("hex").hexLenFromBytes;
 const bytesToHex = @import("hex").bytesToHex;
 const maxChunksToDepth = @import("hashing").maxChunksToDepth;
 const Node = @import("persistent_merkle_tree").Node;
-const computeByteToBitBooleanArray = @import("bit").computeByteToBitBooleanArray;
 
 pub fn BitVector(comptime _length: comptime_int) type {
     const byte_len = std.math.divCeil(usize, _length, 8) catch unreachable;
@@ -46,11 +45,10 @@ pub fn BitVector(comptime _length: comptime_int) type {
 
             for (0..byte_len) |byte_index| {
                 const byte = self.data[byte_index];
-                const bits = try computeByteToBitBooleanArray(byte);
-
                 for (0..8) |bit_index| {
                     const overall_index = byte_index * 8 + bit_index;
-                    if (bits[bit_index]) {
+                    const mask = @as(u8, 1) << @intCast(bit_index);
+                    if ((byte & mask) != 0) {
                         out[true_bit_count] = overall_index;
                         true_bit_count += 1;
                     }

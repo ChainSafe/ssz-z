@@ -9,7 +9,6 @@ const merkleize = @import("hashing").merkleize;
 const mixInLength = @import("hashing").mixInLength;
 const maxChunksToDepth = @import("hashing").maxChunksToDepth;
 const Node = @import("persistent_merkle_tree").Node;
-const computeByteToBitBooleanArray = @import("bit").computeByteToBitBooleanArray;
 
 pub fn BitList(comptime limit: comptime_int) type {
     return struct {
@@ -65,11 +64,10 @@ pub fn BitList(comptime limit: comptime_int) type {
             var true_bit_count: usize = 0;
 
             for (self.data.items, 0..) |byte, byte_index| {
-                const bits = try computeByteToBitBooleanArray(byte);
-
                 for (0..8) |bit_index| {
                     const overall_index = byte_index * 8 + bit_index;
-                    if (bits[bit_index]) {
+                    const mask = @as(u8, 1) << @intCast(bit_index);
+                    if ((byte & mask) != 0) {
                         out[true_bit_count] = overall_index;
                         true_bit_count += 1;
                     }
