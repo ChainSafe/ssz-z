@@ -63,17 +63,31 @@ pub fn BitList(comptime limit: comptime_int) type {
             if (out.len < self.bit_len) {
                 return error.InvalidSize;
             }
+
+            const full_byte_len = self.bit_len / 8;
+            const remainder_bits = self.bit_len % 8;
             var true_bit_count: usize = 0;
 
-            for (self.data.items, 0..) |byte, byte_index| {
-                for (0..8) |bit_index| {
-                    const overall_index = byte_index * 8 + bit_index;
-                    const mask = @as(u8, 1) << @intCast(bit_index);
-                    if ((byte & mask) != 0) {
-                        out[true_bit_count] = overall_index;
-                        true_bit_count += 1;
-                    }
+            for (0..full_byte_len) |i_byte| {
+                var b = self.data.items[i_byte];
+                while (b != 0) {
+                    const lsb: u8 = @ctz(b);
+                    const bit_index = i_byte * 8 + lsb;
+                    out[true_bit_count] = bit_index;
+                    true_bit_count += 1;
+                    b &= b - 1;
                 }
+            }
+            if (remainder_bits <= 0) return true_bit_count;
+            const tail_mask: u8 = (@as(u8, 1) << @intCast(remainder_bits)) - 1;
+            var b = self.data.items[full_byte_len] & tail_mask;
+
+            while (b != 0) {
+                const lsb: u8 = @ctz(b);
+                const bit_index = full_byte_len * 8 + lsb;
+                out[true_bit_count] = bit_index;
+                true_bit_count += 1;
+                b &= b - 1;
             }
 
             return true_bit_count;

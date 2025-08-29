@@ -45,15 +45,15 @@ pub fn BitVector(comptime _length: comptime_int) type {
             }
             var true_bit_count: usize = 0;
 
-            for (0..byte_len) |byte_index| {
-                const byte = self.data[byte_index];
-                for (0..8) |bit_index| {
-                    const overall_index = byte_index * 8 + bit_index;
-                    const mask = @as(u8, 1) << @intCast(bit_index);
-                    if ((byte & mask) != 0) {
-                        out[true_bit_count] = overall_index;
-                        true_bit_count += 1;
-                    }
+            for (0..byte_len) |i_byte| {
+                var b = self.data[i_byte];
+
+                while (b != 0) {
+                    const lsb: usize = @as(u8, @ctz(b));
+                    const bit_index = i_byte * 8 + lsb;
+                    out[true_bit_count] = bit_index;
+                    true_bit_count += 1;
+                    b &= b - 1;
                 }
             }
 
