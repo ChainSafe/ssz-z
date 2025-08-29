@@ -1,4 +1,6 @@
 const std = @import("std");
+const expectEqualRootsAlloc = @import("test_utils.zig").expectEqualRootsAlloc;
+const expectEqualSerializedAlloc = @import("test_utils.zig").expectEqualSerializedAlloc;
 const TypeKind = @import("type_kind.zig").TypeKind;
 const isBasicType = @import("type_kind.zig").isBasicType;
 const isFixedType = @import("type_kind.zig").isFixedType;
@@ -66,6 +68,17 @@ pub fn FixedListType(comptime ST: type, comptime _limit: comptime_int) type {
             }
             try merkleize(@ptrCast(chunks), chunk_depth, out);
             mixInLength(value.items.len, out);
+        }
+
+        /// Clones the underlying `ArrayList`.
+        ///
+        /// Caller owns the memory.
+        pub fn clone(allocator: std.mem.Allocator, value: *const Type, out: *Type) !void {
+            try out.resize(allocator, value.items.len);
+
+            for (value.items, 0..) |v, i| {
+                try Element.clone(&v, &out.items[i]);
+            }
         }
 
         pub fn serializedSize(value: *const Type) usize {
@@ -310,6 +323,15 @@ pub fn VariableListType(comptime ST: type, comptime _limit: comptime_int) type {
             value.deinit(allocator);
         }
 
+        /// Clones the underlying `ArrayList`.
+        ///
+        /// Caller owns the memory.
+        pub fn clone(allocator: std.mem.Allocator, value: *const Type, out: *Type) !void {
+            try out.resize(allocator, value.items.len);
+            for (0..value.items.len) |i|
+                try Element.clone(allocator, &value.items[i], &out.items[i]);
+        }
+
         pub fn chunkCount(value: *const Type) usize {
             return value.items.len;
         }
@@ -550,4 +572,33 @@ test "ListType - sanity" {
 
     _ = BytesBytes.serializeIntoBytes(&bb, bb_buf);
     try BytesBytes.deserializeFromBytes(allocator, bb_buf, &bb);
+}
+
+test "clone" {
+    const allocator = std.testing.allocator;
+    const BytesFixed = FixedListType(UintType(8), 32);
+    const BytesVariable = VariableListType(BytesFixed, 32);
+
+    var b: BytesFixed.Type = BytesFixed.default_value;
+    defer b.deinit(allocator);
+    try b.append(allocator, 5);
+    var cloned: BytesFixed.Type = BytesFixed.default_value;
+    try BytesFixed.clone(allocator, &b, &cloned);
+    defer cloned.deinit(allocator);
+    try std.testing.expect(&b != &cloned);
+    try std.testing.expect(std.mem.eql(u8, b.items[0..], cloned.items[0..]));
+    try expectEqualRootsAlloc(BytesFixed, allocator, b, cloned);
+    try expectEqualSerializedAlloc(BytesFixed, allocator, b, cloned);
+
+    var bv: BytesVariable.Type = BytesVariable.default_value;
+    defer bv.deinit(allocator);
+    const bb: BytesFixed.Type = BytesFixed.default_value;
+    try bv.append(allocator, bb);
+    var cloned_v: BytesVariable.Type = BytesVariable.default_value;
+    try BytesVariable.clone(allocator, &bv, &cloned_v);
+    defer cloned_v.deinit(allocator);
+    try std.testing.expect(&bv != &cloned_v);
+    try expectEqualRootsAlloc(BytesVariable, allocator, bv, cloned_v);
+    try expectEqualSerializedAlloc(BytesVariable, allocator, bv, cloned_v);
+    // TODO(bing): Equals test
 }

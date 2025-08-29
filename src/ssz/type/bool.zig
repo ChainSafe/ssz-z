@@ -1,5 +1,7 @@
 const std = @import("std");
 const TypeKind = @import("type_kind.zig").TypeKind;
+const expectEqualSerialized = @import("test_utils.zig").expectEqualSerialized;
+const expectEqualRoots = @import("test_utils.zig").expectEqualRoots;
 const Node = @import("persistent_merkle_tree").Node;
 
 pub fn BoolType() type {
@@ -12,6 +14,10 @@ pub fn BoolType() type {
 
         pub fn equals(a: *const Type, b: *const Type) bool {
             return a.* == b.*;
+        }
+
+        pub fn clone(value: *const Type, out: *Type) !void {
+            out.* = value.*;
         }
 
         pub fn hashTreeRoot(value: *const Type, out: *[32]u8) !void {
@@ -114,5 +120,10 @@ test "BoolType - sanity" {
     defer write_stream.deinit();
     try Bool.serializeIntoJson(&write_stream, &b);
 
+    var cloned: Bool.Type = undefined;
+    try Bool.clone(&b, &cloned);
+
+    try expectEqualRoots(Bool, b, cloned);
     try std.testing.expectEqualSlices(u8, input_json, output_json.items);
+    try expectEqualSerialized(Bool, b, cloned);
 }

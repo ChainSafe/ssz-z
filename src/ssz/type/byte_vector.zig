@@ -1,4 +1,6 @@
 const std = @import("std");
+const expectEqualRoots = @import("test_utils.zig").expectEqualRoots;
+const expectEqualSerialized = @import("test_utils.zig").expectEqualSerialized;
 const TypeKind = @import("type_kind.zig").TypeKind;
 const UintType = @import("uint.zig").UintType;
 const hexToBytes = @import("hex").hexToBytes;
@@ -39,6 +41,10 @@ pub fn ByteVectorType(comptime _length: comptime_int) type {
             var chunks = [_][32]u8{[_]u8{0} ** 32} ** ((chunk_count + 1) / 2 * 2);
             _ = serializeIntoBytes(value, @ptrCast(&chunks));
             try merkleize(@ptrCast(&chunks), chunk_depth, out);
+        }
+
+        pub fn clone(value: *const Type, out: *Type) !void {
+            out.* = value.*;
         }
 
         pub fn serializeIntoBytes(value: *const Type, out: []u8) usize {
@@ -126,4 +132,17 @@ pub fn ByteVectorType(comptime _length: comptime_int) type {
             _ = try hexToBytes(out, hex_bytes);
         }
     };
+}
+
+test "clone" {
+    const length = 44;
+    const Bytes = ByteVectorType(length);
+
+    var b = [_]u8{1} ** length;
+    var cloned: [44]u8 = undefined;
+    try Bytes.clone(&b, &cloned);
+    try std.testing.expect(&b != &cloned);
+    try std.testing.expect(std.mem.eql(u8, b[0..], cloned[0..]));
+    try expectEqualRoots(Bytes, b, cloned);
+    try expectEqualSerialized(Bytes, b, cloned);
 }

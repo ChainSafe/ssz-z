@@ -703,7 +703,7 @@ pub const Id = enum(u32) {
         var path_rights_buf: [max_depth]Id = undefined;
 
         // TODO how to handle failing to resize here, especially after several allocs
-        errdefer pool.free(path_parents_buf);
+        errdefer pool.free(&path_parents_buf);
 
         var node_id = root_node;
         // The depth offset to start from, going from the current gindex to the next
@@ -766,7 +766,7 @@ pub const Id = enum(u32) {
             d_offset = if (i == gindices.len - 1)
                 path_len - gindex.pathLen()
             else
-                path_len - @as(Depth, @ctz(gindex ^ gindices[i + 1]));
+                path_len - @as(Depth, @intCast(@ctz(@intFromEnum(gindex) ^ @intFromEnum(gindices[i + 1]))));
 
             // Rebind upwards depth diff times
             try pool.rebind(
@@ -797,7 +797,7 @@ pub fn fillToDepth(pool: *Pool, bottom: Id, depth: Depth, should_ref: bool) Erro
 
 /// Fill a view to the specified length and depth, returning the new root node id.
 pub fn fillToLength(pool: *Pool, leaf: Id, depth: Depth, length: usize, should_ref: bool) Error!Id {
-    const max_length = @as(Gindex, 1) << depth;
+    const max_length = @as(Gindex.Uint, 1) << depth;
     if (length > max_length) {
         return Error.InvalidLength;
     }
@@ -811,7 +811,7 @@ pub fn fillToLength(pool: *Pool, leaf: Id, depth: Depth, length: usize, should_r
     }
 
     // otherwise, traverse down to the specified length
-    const gindex: Gindex = @intCast(max_length | length);
+    const gindex: Gindex = @enumFromInt(max_length | length);
     const path_len = gindex.pathLen();
     var path = gindex.toPath();
 

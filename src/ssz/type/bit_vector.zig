@@ -1,4 +1,6 @@
 const std = @import("std");
+const expectEqualRoots = @import("test_utils.zig").expectEqualRoots;
+const expectEqualSerialized = @import("test_utils.zig").expectEqualSerialized;
 const merkleize = @import("hashing").merkleize;
 const TypeKind = @import("type_kind.zig").TypeKind;
 const BoolType = @import("bool.zig").BoolType;
@@ -38,25 +40,25 @@ pub fn BitVector(comptime _length: comptime_int) type {
             }
         }
 
-        pub fn getTrueBitIndexes(self: *const @This(), allocator: std.mem.Allocator, out: *[]usize) !void {
-            var buffer: [length]usize = undefined;
+        pub fn getTrueBitIndexes(self: *const @This(), out: []usize) !usize {
+            if (out.len < length) {
+                return error.InvalidSize;
+            }
             var true_bit_count: usize = 0;
 
             for (0..byte_len) |byte_index| {
                 const byte = self.data[byte_index];
-                const bits = try computeByteToBitBooleanArray(byte);
-
                 for (0..8) |bit_index| {
                     const overall_index = byte_index * 8 + bit_index;
-                    if (bits[bit_index]) {
-                        buffer[true_bit_count] = overall_index;
+                    const mask = @as(u8, 1) << @intCast(bit_index);
+                    if ((byte & mask) != 0) {
+                        out[true_bit_count] = overall_index;
                         true_bit_count += 1;
                     }
                 }
             }
 
-            out.* = try allocator.alloc(usize, true_bit_count);
-            @memcpy(out.*, buffer[0..true_bit_count]);
+            return true_bit_count;
         }
 
         pub fn getSingleTrueBit(self: *const @This(), out: *?usize) !void {
@@ -130,6 +132,32 @@ pub fn BitVector(comptime _length: comptime_int) type {
                 }
             }
         }
+
+        /// Allocates and returns an `ArrayList` of indices where the bit at the index of `self` is set to `true`.
+        ///
+        /// Caller must call `deinit` on the returned list
+        pub fn intersectValues(
+            self: *const @This(),
+            comptime T: type,
+            allocator: std.mem.Allocator,
+            values: *const [length]T,
+        ) !std.ArrayList(T) {
+            var indices = try std.ArrayList(T).initCapacity(allocator, byte_len * 8);
+
+            for (0..byte_len) |i_byte| {
+                var b = self.data[i_byte];
+                // Kernighan's algorithm to count the set bits instead of going through 0..8 for every byte
+                while (b != 0) {
+                    const lsb: usize = @as(u8, @ctz(b)); // Get the index of least significant bit
+                    const bit_index = i_byte * 8 + lsb;
+                    indices.appendAssumeCapacity(values[bit_index]);
+                    // The `b - 1` flips the bits starting from `lsb` index
+                    // And `&` will reset the last bit at `lsb` index
+                    b &= b - 1;
+                }
+            }
+            return indices;
+        }
     };
 }
 
@@ -163,6 +191,10 @@ pub fn BitVectorType(comptime _length: comptime_int) type {
             var chunks = [_][32]u8{[_]u8{0} ** 32} ** ((chunk_count + 1) / 2 * 2);
             _ = serializeIntoBytes(value, @ptrCast(&chunks));
             try merkleize(@ptrCast(&chunks), chunk_depth, out);
+        }
+
+        pub fn clone(value: *const Type, out: *Type) !void {
+            out.* = value.*;
         }
 
         pub fn serializeIntoBytes(value: *const Type, out: []u8) usize {
@@ -282,7 +314,6 @@ test "BitVectorType - sanity" {
 }
 
 test "BitVectorType - sanity with bools" {
-    const allocator = std.testing.allocator;
     const Bits = BitVectorType(16);
     const expected_bools = [_]bool{ true, false, true, true, false, true, false, true, true, false, true, true, false, false, true, false };
     const expected_true_bit_indexes = [_]usize{ 0, 2, 3, 5, 7, 8, 10, 11, 14 };
@@ -293,9 +324,50 @@ test "BitVectorType - sanity with bools" {
 
     try std.testing.expectEqualSlices(bool, &expected_bools, &actual_bools);
 
-    var true_bit_indexes: []usize = undefined;
-    defer allocator.free(true_bit_indexes);
-    try b.getTrueBitIndexes(allocator, &true_bit_indexes);
+    var true_bit_indexes: [Bits.length]usize = undefined;
+    const true_bit_count = try b.getTrueBitIndexes(true_bit_indexes[0..]);
 
-    try std.testing.expectEqualSlices(usize, &expected_true_bit_indexes, true_bit_indexes);
+    try std.testing.expectEqualSlices(usize, &expected_true_bit_indexes, true_bit_indexes[0..true_bit_count]);
+}
+
+test "BitVectorType - intersectValues" {
+    const TestCase = struct { expected: []const u8, bit_len: usize };
+    const test_cases = [_]TestCase{
+        .{ .expected = &[_]u8{}, .bit_len = 16 },
+        .{ .expected = &[_]u8{3}, .bit_len = 16 },
+        .{ .expected = &[_]u8{ 0, 5, 6, 10, 14 }, .bit_len = 16 },
+        .{ .expected = &[_]u8{ 0, 5, 6, 10, 14 }, .bit_len = 15 },
+    };
+
+    const allocator = std.testing.allocator;
+    const Bits = BitVectorType(16);
+
+    for (test_cases) |tc| {
+        var b: Bits.Type = Bits.default_value;
+
+        for (tc.expected) |i| try b.set(i, true);
+
+        var values: [16]u8 = undefined;
+        for (0..tc.bit_len) |i| values[i] = @intCast(i);
+
+        var actual = try b.intersectValues(u8, allocator, &values);
+        defer actual.deinit();
+        try std.testing.expectEqualSlices(u8, tc.expected, actual.items);
+    }
+}
+
+test "clone" {
+    const length = 44;
+    const Bits = BitVectorType(length);
+    var b: Bits.Type = Bits.default_value;
+    try b.set(0, true);
+    try b.set(length - 1, true);
+
+    var cloned: Bits.Type = undefined;
+    try Bits.clone(&b, &cloned);
+    try std.testing.expect(&b != &cloned);
+    try std.testing.expect(std.mem.eql(u8, b.data[0..], cloned.data[0..]));
+
+    try expectEqualRoots(Bits, b, cloned);
+    try expectEqualSerialized(Bits, b, cloned);
 }

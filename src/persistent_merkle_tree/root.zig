@@ -10,5 +10,5 @@ pub const Node = @import("Node.zig");
 pub const View = @import("View.zig");
 
 test {
-    testing.refAllDecls(@This());
+    testing.refAllDeclsRecursive(@This());
 }
