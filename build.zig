@@ -37,13 +37,6 @@ pub fn build(b: *std.Build) void {
     });
     b.modules.put(b.dupe("hex"), module_hex) catch @panic("OOM");
 
-    const module_bit = b.createModule(.{
-        .root_source_file = b.path("src/bit.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    b.modules.put(b.dupe("bit"), module_bit) catch @panic("OOM");
-
     const module_hashing = b.createModule(.{
         .root_source_file = b.path("src/hashing/root.zig"),
         .target = target,
@@ -294,20 +287,6 @@ pub fn build(b: *std.Build) void {
     const tls_run_test_hex = b.step("test:hex", "Run the hex test");
     tls_run_test_hex.dependOn(&run_test_hex.step);
     tls_run_test.dependOn(&run_test_hex.step);
-
-    const test_bit = b.addTest(.{
-        .name = "bit",
-        .root_module = module_bit,
-        .filters = &[_][]const u8{},
-    });
-    const install_test_bit = b.addInstallArtifact(test_bit, .{});
-    const tls_install_test_bit = b.step("build-test:bit", "Install the bit test");
-    tls_install_test_bit.dependOn(&install_test_bit.step);
-
-    const run_test_bit = b.addRunArtifact(test_bit);
-    const tls_run_test_bit = b.step("test:bit", "Run the bit test");
-    tls_run_test_bit.dependOn(&run_test_bit.step);
-    tls_run_test.dependOn(&run_test_bit.step);
 
     const test_hashing = b.addTest(.{
         .name = "hashing",
@@ -564,7 +543,6 @@ pub fn build(b: *std.Build) void {
 
     module_ssz.addImport("build_options", options_module_build_options);
     module_ssz.addImport("hex", module_hex);
-    module_ssz.addImport("bit", module_bit);
     module_ssz.addImport("hashing", module_hashing);
     module_ssz.addImport("persistent_merkle_tree", module_persistent_merkle_tree);
 
@@ -600,12 +578,10 @@ pub fn build(b: *std.Build) void {
     module_bench_hashing.addImport("zbench", dep_zbench.module("zbench"));
 
     module_int.addImport("hex", module_hex);
-    module_int.addImport("bit", module_bit);
     module_int.addImport("ssz", module_ssz);
     module_int.addImport("persistent_merkle_tree", module_persistent_merkle_tree);
 
     module_generic_spec_tests.addImport("hex", module_hex);
-    module_generic_spec_tests.addImport("bit", module_bit);
     module_generic_spec_tests.addImport("snappy", dep_snappy.module("snappy"));
     module_generic_spec_tests.addImport("persistent_merkle_tree", module_persistent_merkle_tree);
     module_generic_spec_tests.addImport("ssz", module_ssz);
@@ -613,7 +589,6 @@ pub fn build(b: *std.Build) void {
     module_generic_spec_tests.addImport("yaml", dep_yaml.module("yaml"));
 
     module_static_spec_tests.addImport("hex", module_hex);
-    module_static_spec_tests.addImport("bit", module_bit);
     module_static_spec_tests.addImport("snappy", dep_snappy.module("snappy"));
     module_static_spec_tests.addImport("persistent_merkle_tree", module_persistent_merkle_tree);
     module_static_spec_tests.addImport("ssz", module_ssz);

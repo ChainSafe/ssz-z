@@ -71,11 +71,10 @@ pub fn BitVector(comptime _length: comptime_int) type {
                     continue;
                 }
 
-                const bits = try computeByteToBitBooleanArray(byte);
-
                 for (0..8) |bit_index| {
                     const overall_index = byte_index * 8 + bit_index;
-                    if (bits[bit_index]) {
+                    const mask = @as(u8, 1) << @intCast(bit_index);
+                    if ((byte & mask) != 0) {
                         if (found_index != null) {
                             out.* = null; // more than one true bit found
                             return;
