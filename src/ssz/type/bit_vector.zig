@@ -64,24 +64,19 @@ pub fn BitVector(comptime _length: comptime_int) type {
         pub fn getSingleTrueBit(self: *const @This(), out: *?usize) !void {
             var found_index: ?usize = null;
 
-            for (0..byte_len) |byte_index| {
-                const byte = self.data[byte_index];
+            for (0..byte_len) |i_byte| {
+                var b = self.data[i_byte];
 
-                if (byte == 0) {
-                    continue;
-                }
-
-                for (0..8) |bit_index| {
-                    const overall_index = byte_index * 8 + bit_index;
-                    const mask = @as(u8, 1) << @intCast(bit_index);
-                    if ((byte & mask) != 0) {
-                        if (found_index != null) {
-                            out.* = null; // more than one true bit found
-                            return;
-                        } else {
-                            found_index = overall_index;
-                        }
+                while (b != 0) {
+                    if (found_index != null) {
+                        out.* = null; // more than one true bit found
+                        return;
                     }
+                    const lsb: usize = @as(u8, @ctz(b));
+                    const bit_index = i_byte * 8 + lsb;
+                    found_index = bit_index;
+
+                    b &= b - 1;
                 }
             }
             if (found_index == null) {
@@ -327,6 +322,13 @@ test "BitVectorType - sanity with bools" {
     const true_bit_count = try b.getTrueBitIndexes(true_bit_indexes[0..]);
 
     try std.testing.expectEqualSlices(usize, &expected_true_bit_indexes, true_bit_indexes[0..true_bit_count]);
+
+    const expected_single_bool = [_]bool{ false, false, false, false, false, false, false, false, false, false, false, true, false, false, false, false };
+    var b_single_bool: Bits.Type = try Bits.Type.fromBoolArray(expected_single_bool);
+
+    var true_bit_index: ?usize = undefined;
+    try b_single_bool.getSingleTrueBit(&true_bit_index);
+    try std.testing.expectEqual(true_bit_index, 11);
 }
 
 test "BitVectorType - intersectValues" {
