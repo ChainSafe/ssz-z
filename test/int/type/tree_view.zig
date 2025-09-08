@@ -30,14 +30,22 @@ test "TreeView" {
     try std.testing.expectEqualSlices(u8, ([_]u8{1} ** 32)[0..], root[0..]);
 
     // modify field "epoch"
-    try view.setField("epoch", 100);
+    const old_epoch = try view.setField("epoch", 100);
+    try std.testing.expectEqual(42, old_epoch);
     try std.testing.expectEqual(100, try view.getField("epoch"));
 
     // modify field "root"
     var new_root = [_]u8{2} ** 32;
     const new_root_node = try RootView.SszType.tree.fromValue(&pool, &new_root);
     const new_root_view = try RootView.init(std.testing.allocator, &pool, new_root_node);
-    try view.setField("root", new_root_view);
+    const opt_old_root_view = try view.setField("root", new_root_view);
+    if (opt_old_root_view) |*old_root_view| {
+        try std.testing.expect(old_root_view.data.root == root_view.data.root);
+        var mutable_old_root_view = @constCast(old_root_view);
+        defer mutable_old_root_view.deinit();
+    } else {
+        try std.testing.expect(false);
+    }
 
     // confirm "root" has been modified
     root_view = try view.getField("root");
