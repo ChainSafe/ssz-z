@@ -3,6 +3,7 @@ const TestCase = @import("common.zig").TypeTestCase;
 const UintType = @import("ssz").UintType;
 const ByteVectorType = @import("ssz").ByteVectorType;
 const FixedListType = @import("ssz").FixedListType;
+const VariableListType = @import("ssz").VariableListType;
 const FixedContainerType = @import("ssz").FixedContainerType;
 
 test "ListCompositeType of Root" {
@@ -47,6 +48,45 @@ test "ListCompositeType of Container" {
         b: Uint,
     });
     const List = FixedListType(Container, 4);
+
+    const TypeTest = @import("common.zig").typeTest(List);
+
+    for (test_cases[0..]) |*tc| {
+        try TypeTest.run(allocator, tc);
+    }
+}
+
+test "VariableListType of FixedList" {
+    const test_cases = [_]TestCase{
+        TestCase{
+            .id = "empty",
+            .serializedHex = "0x",
+            .json =
+            \\[]
+            ,
+            .rootHex = "0x7a0501f5957bdf9cb3a8ff4966f02265f968658b7a9c62642cba1165e86642f5",
+        },
+        TestCase{
+            .id = "2 full values",
+            .serializedHex = "0x080000000c0000000100020003000400",
+            .json =
+            \\[["1","2"],["3","4"]]
+            ,
+            .rootHex = "0x0000000000000000000000000000000000000000000000000000000000000000",
+        },
+        TestCase{
+            .id = "2 empty values",
+            .serializedHex = "0x0800000008000000",
+            .json =
+            \\[[],[]]
+            ,
+            .rootHex = "0xe839a22714bda05923b611d07be93b4d707027d29fd9eef7aa864ed587e462ec",
+        },
+    };
+
+    const allocator = std.testing.allocator;
+    const FixedList = FixedListType(UintType(16), 2);
+    const List = VariableListType(FixedList, 2);
 
     const TypeTest = @import("common.zig").typeTest(List);
 

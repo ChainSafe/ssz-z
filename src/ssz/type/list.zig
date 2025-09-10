@@ -317,7 +317,7 @@ pub fn VariableListType(comptime ST: type, comptime _limit: comptime_int) type {
         }
 
         pub fn deinit(allocator: std.mem.Allocator, value: *Type) void {
-            for (value.items) |element| {
+            for (value.items) |*element| {
                 Element.deinit(allocator, element);
             }
             value.deinit(allocator);

@@ -92,6 +92,8 @@ pub fn typeTest(comptime ST: type) type {
                 defer write_stream.deinit();
 
                 try ST.serializeIntoJson(allocator, &write_stream, &json_value);
+                // sanity check first
+                try std.testing.expectEqual(tc.json.len, output_json.items.len);
                 try std.testing.expectEqualSlices(u8, tc.json, output_json.items);
             }
         }
