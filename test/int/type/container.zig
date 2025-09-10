@@ -15,15 +15,16 @@ test "ContainerType" {
             .json =
             \\{"a":"0","b":"0"}
             ,
-            .rootHex = "0x0000000000000000000000000000000000000000000000000000000000000000",
+            .rootHex = "0xf5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b",
         },
+        // refer to https://github.com/ChainSafe/ssz/blob/7f5580c2ea69f9307300ddb6010a8bc7ce2fc471/packages/ssz/test/unit/byType/container/valid.test.ts#L22
         TestCase{
-            .id = "simple",
-            .serializedHex = "0x01000000000000000000000000000000",
+            .id = "some value",
+            .serializedHex = "0x40e2010000000000f1fb090000000000",
             .json =
-            \\{"a":"1","b":"0"}
+            \\{"a":"123456","b":"654321"}
             ,
-            .rootHex = "0x5c597e77f879e249af95fe543cf5f4dd16b686948dc719707445a32a77ff6266",
+            .rootHex = "0x53b38aff7bf2dd1a49903d07a33509b980c6acc9f2235a45aac342b0a9528c22",
         },
     };
 
@@ -52,21 +53,23 @@ test "ContainerType with FixedListType(uint64, 128) and uint64" {
     const TypeTest = @import("common.zig").typeTest(Container);
 
     const test_cases = [_]TestCase{
+        // refer to https://github.com/ChainSafe/ssz/blob/7f5580c2ea69f9307300ddb6010a8bc7ce2fc471/packages/ssz/test/unit/byType/container/valid.test.ts#L51
         TestCase{
-            .id = "empty",
+            .id = "zero",
             .serializedHex = "0x0c0000000000000000000000",
             .json =
             \\{"a":[],"b":"0"}
             ,
-            .rootHex = "0x0000000000000000000000000000000000000000000000000000000000000000",
+            .rootHex = "0xdc3619cbbc5ef0e0a3b38e3ca5d31c2b16868eacb6e4bcf8b4510963354315f5",
         },
+        // refer to https://github.com/ChainSafe/ssz/blob/7f5580c2ea69f9307300ddb6010a8bc7ce2fc471/packages/ssz/test/unit/byType/container/valid.test.ts#L57
         TestCase{
-            .id = "simple",
-            .serializedHex = "0x0c00000000000000000000000100000000000000",
+            .id = "some value",
+            .serializedHex = "0x0c000000f1fb09000000000040e2010000000000f1fb09000000000040e2010000000000f1fb09000000000040e2010000000000",
             .json =
-            \\{"a":["1"],"b":"0"}
+            \\{"a":["123456","654321","123456","654321","123456"],"b":"654321"}
             ,
-            .rootHex = "0x5c597e77f879e249af95fe543cf5f4dd16b686948dc719707445a32a77ff6266",
+            .rootHex = "0x5ff1b92b2fa55eea1a14b26547035b2f5437814b3436172205fa7d6af4091748",
         },
     };
 

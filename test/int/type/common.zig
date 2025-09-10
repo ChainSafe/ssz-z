@@ -1,5 +1,6 @@
 const std = @import("std");
 const hexToBytes = @import("hex").hexToBytes;
+const bytesToHex = @import("hex").bytesToHex;
 const isFixedType = @import("ssz").isFixedType;
 const UintType = @import("ssz").UintType;
 const BoolType = @import("ssz").BoolType;
@@ -36,10 +37,11 @@ pub fn typeTest(comptime ST: type) type {
                 try std.testing.expectEqualSlices(u8, serialized, &out);
 
                 // hash tree root
-                // var root = [_]u8{0} ** 32;
-                // try ST.hashTreeRoot(&value, root[0..]);
-                // const rootHex = try toRootHex(root[0..]);
-                // try std.testing.expectEqualSlices(u8, tc.rootHex, rootHex);
+                var root = [_]u8{0} ** 32;
+                try ST.hashTreeRoot(&value, root[0..]);
+                var root_hex = [_]u8{0} ** 66;
+                _ = try bytesToHex(&root_hex, &root);
+                try std.testing.expectEqualSlices(u8, tc.rootHex, &root_hex);
 
                 // deserialize from json
                 var json_value: ST.Type = undefined;
@@ -71,10 +73,11 @@ pub fn typeTest(comptime ST: type) type {
                 try std.testing.expectEqualSlices(u8, serialized, out);
 
                 // hash tree root
-                // var root = [_]u8{0} ** 32;
-                // try ST.hashTreeRoot(&value, root[0..]);
-                // const rootHex = try toRootHex(root[0..]);
-                // try std.testing.expectEqualSlices(u8, tc.rootHex, rootHex);
+                var root = [_]u8{0} ** 32;
+                try ST.hashTreeRoot(allocator, &value, root[0..]);
+                var root_hex = [_]u8{0} ** 66;
+                _ = try bytesToHex(&root_hex, &root);
+                try std.testing.expectEqualSlices(u8, tc.rootHex, &root_hex);
 
                 // deserialize from json
                 var json_value = ST.default_value;

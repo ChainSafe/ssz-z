@@ -7,19 +7,20 @@ const FixedContainerType = @import("ssz").FixedContainerType;
 
 test "ListCompositeType of Root" {
     const test_cases = [_]TestCase{
+        // refer to https://github.com/ChainSafe/ssz/blob/7f5580c2ea69f9307300ddb6010a8bc7ce2fc471/packages/ssz/test/unit/byType/listComposite/valid.test.ts#L23
         TestCase{
-            .id = "4 roots",
-            .serializedHex = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            .id = "2 roots",
+            .serializedHex = "0xddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             .json =
-            \\["0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd","0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"]
+            \\["0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd","0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"]
             ,
-            .rootHex = "0x56019bafbc63461b73e21c6eae0c62e8d5b8e05cb0ac065777dc238fcf9604e6",
+            .rootHex = "0x0cb947377e177f774719ead8d210af9c6461f41baf5b4082f86a3911454831b8",
         },
     };
 
     const allocator = std.testing.allocator;
     const ByteVector = ByteVectorType(32);
-    const List = FixedListType(ByteVector, 4);
+    const List = FixedListType(ByteVector, 128);
 
     const TypeTest = @import("common.zig").typeTest(List);
 
@@ -30,13 +31,14 @@ test "ListCompositeType of Root" {
 
 test "ListCompositeType of Container" {
     const test_cases = [_]TestCase{
+        // refer to https://github.com/ChainSafe/ssz/blob/7f5580c2ea69f9307300ddb6010a8bc7ce2fc471/packages/ssz/test/unit/byType/listComposite/valid.test.ts#L46
         TestCase{
-            .id = "4 containers",
-            .serializedHex = "0x01000000000000000200000000000000030000000000000004000000000000000500000000000000060000000000000007000000000000000800000000000000",
+            .id = "2 values",
+            .serializedHex = "0x0000000000000000000000000000000040e2010000000000f1fb090000000000",
             .json =
-            \\[{"a":"1","b":"2"},{"a":"3","b":"4"},{"a":"5","b":"6"},{"a":"7","b":"8"}]
+            \\[{"a":"0","b":"0"},{"a":"123456","b":"654321"}]
             ,
-            .rootHex = "0x0000000000000000000000000000000000000000000000000000000000000000",
+            .rootHex = "0x8ff94c10d39ffa84aa937e2a077239c2742cb425a2a161744a3e9876eb3c7210",
         },
     };
 
@@ -46,7 +48,7 @@ test "ListCompositeType of Container" {
         a: Uint,
         b: Uint,
     });
-    const List = FixedListType(Container, 4);
+    const List = FixedListType(Container, 128);
 
     const TypeTest = @import("common.zig").typeTest(List);
 
