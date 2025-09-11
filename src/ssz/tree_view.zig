@@ -158,8 +158,8 @@ pub fn TreeView(comptime ST: type) type {
         /// Set an element by index. If the element is a basic type, pass the value directly.
         /// If the element is a complex type, pass a TreeView of the corresponding type.
         /// The caller transfers ownership of the `value` TreeView to this parent view.
-        /// In return, caller gets an owned TreeView of the old value, which it must deinit when done.
-        pub fn setElement(self: *Self, index: usize, value: Element) !Element {
+        /// The existing TreeView, if any, will be deinited by this function.
+        pub fn setElement(self: *Self, index: usize, value: Element) !void {
             if (ST.kind != .vector and ST.kind != .list) {
                 @compileError("setElement can only be used with vector or list types");
             }
@@ -176,22 +176,14 @@ pub fn TreeView(comptime ST: type) type {
                         &value,
                     ),
                 );
-                var child_value: ST.Element.Type = undefined;
-                try ST.Element.tree.toValue(child_node, self.pool, &child_value);
-                return child_value;
             } else {
                 const opt_old_data = try self.data.children_data.fetchPut(
                     child_gindex,
                     value.data,
                 );
-                if (opt_old_data) |old_data| {
-                    return TreeView(ST.Element){
-                        .allocator = self.allocator,
-                        .pool = self.pool,
-                        .data = old_data.value,
-                    };
-                } else {
-                    return null;
+                if (opt_old_data) |old_data_value| {
+                    var data: *Data = @constCast(&old_data_value.value);
+                    data.deinit(self.pool);
                 }
             }
         }
@@ -236,8 +228,8 @@ pub fn TreeView(comptime ST: type) type {
         /// Set a field by name. If the field is a basic type, pass the value directly.
         /// If the field is a complex type, pass a TreeView of the corresponding type.
         /// The caller transfers ownership of the `value` TreeView to this parent view.
-        /// In return, caller gets an owned TreeView of the old value, which it must deinit when done.
-        pub fn setField(self: *Self, comptime field_name: []const u8, value: Field(field_name)) !?Field(field_name) {
+        /// The existing TreeView, if any, will be deinited by this function.
+        pub fn setField(self: *Self, comptime field_name: []const u8, value: Field(field_name)) !void {
             if (comptime ST.kind != .container) {
                 @compileError("setField can only be used with container types");
             }
@@ -254,25 +246,16 @@ pub fn TreeView(comptime ST: type) type {
                     ),
                 );
                 if (opt_old_node) |old_node| {
-                    var old_value: ChildST.Type = undefined;
-                    try ChildST.tree.toValue(old_node.value, self.pool, &old_value);
-                    return old_value;
-                } else {
-                    return null;
+                    self.pool.unref(old_node.value);
                 }
             } else {
                 const opt_old_data = try self.data.children_data.fetchPut(
                     child_gindex,
                     value.data,
                 );
-                if (opt_old_data) |old_data| {
-                    return TreeView(ChildST){
-                        .allocator = self.allocator,
-                        .pool = self.pool,
-                        .data = old_data.value,
-                    };
-                } else {
-                    return null;
+                if (opt_old_data) |old_data_value| {
+                    var data: *Data = @constCast(&old_data_value.value);
+                    data.deinit(self.pool);
                 }
             }
         }
