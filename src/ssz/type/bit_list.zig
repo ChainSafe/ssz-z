@@ -79,7 +79,7 @@ pub fn BitList(comptime limit: comptime_int) type {
             return true_bit_count;
         }
 
-        pub fn getSingleTrueBit(self: *const @This(), out: *?usize) !void {
+        pub fn getSingleTrueBit(self: *const @This()) ?usize {
             var found_index: ?usize = null;
             const full_byte_len = self.bit_len / 8;
             const remainder_bits = self.bit_len % 8;
@@ -88,8 +88,7 @@ pub fn BitList(comptime limit: comptime_int) type {
                 var b = self.data.items[i_byte];
                 while (b != 0) {
                     if (found_index != null) {
-                        out.* = null; // more than one true bit found
-                        return;
+                        return null; // more than one true bit found
                     }
                     const lsb: usize = @as(u8, @ctz(b));
                     const bit_index = i_byte * 8 + lsb;
@@ -103,8 +102,7 @@ pub fn BitList(comptime limit: comptime_int) type {
                 var b = self.data.items[full_byte_len] & tail_mask;
                 while (b != 0) {
                     if (found_index != null) {
-                        out.* = null; // more than one true bit found
-                        return;
+                        return null; // more than one true bit found
                     }
                     const lsb: usize = @as(u8, @ctz(b));
                     const bit_index = full_byte_len * 8 + lsb;
@@ -113,10 +111,7 @@ pub fn BitList(comptime limit: comptime_int) type {
                     b &= b - 1;
                 }
             }
-            if (found_index == null) {
-                out.* = null; // No true bits found
-            }
-            out.* = found_index;
+            return found_index;
         }
 
         pub fn deinit(self: *@This(), allocator: std.mem.Allocator) void {
@@ -553,9 +548,7 @@ test "BitListType - sanity with bools" {
     var b_single_bool: Bits.Type = try Bits.Type.fromBoolSlice(allocator, &expected_single_bool);
     defer b_single_bool.deinit(allocator);
 
-    var true_bit_index: ?usize = undefined;
-    try b_single_bool.getSingleTrueBit(&true_bit_index);
-    try std.testing.expectEqual(true_bit_index, 5);
+    try std.testing.expectEqual(b_single_bool.getSingleTrueBit(), 5);
 }
 
 test "BitListType - intersectValues" {

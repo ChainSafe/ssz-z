@@ -60,7 +60,7 @@ pub fn BitVector(comptime _length: comptime_int) type {
             return true_bit_count;
         }
 
-        pub fn getSingleTrueBit(self: *const @This(), out: *?usize) !void {
+        pub fn getSingleTrueBit(self: *const @This()) ?usize {
             var found_index: ?usize = null;
 
             for (0..byte_len) |i_byte| {
@@ -68,8 +68,7 @@ pub fn BitVector(comptime _length: comptime_int) type {
 
                 while (b != 0) {
                     if (found_index != null) {
-                        out.* = null; // more than one true bit found
-                        return;
+                        return null; // more than one true bit found
                     }
                     const lsb: usize = @as(u8, @ctz(b));
                     const bit_index = i_byte * 8 + lsb;
@@ -78,10 +77,7 @@ pub fn BitVector(comptime _length: comptime_int) type {
                     b &= b - 1;
                 }
             }
-            if (found_index == null) {
-                out.* = null; // No true bits found
-            }
-            out.* = found_index;
+            return found_index;
         }
 
         pub fn get(self: *const @This(), bit_index: usize) !bool {
@@ -325,9 +321,7 @@ test "BitVectorType - sanity with bools" {
     const expected_single_bool = [_]bool{ false, false, false, false, false, false, false, false, false, false, false, true, false, false, false, false };
     var b_single_bool: Bits.Type = try Bits.Type.fromBoolArray(expected_single_bool);
 
-    var true_bit_index: ?usize = undefined;
-    try b_single_bool.getSingleTrueBit(&true_bit_index);
-    try std.testing.expectEqual(true_bit_index, 11);
+    try std.testing.expectEqual(b_single_bool.getSingleTrueBit(), 11);
 }
 
 test "BitVectorType - intersectValues" {
