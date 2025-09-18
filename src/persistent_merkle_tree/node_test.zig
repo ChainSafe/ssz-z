@@ -181,6 +181,31 @@ test "get/setNode" {
     try std.testing.expectEqual(leaf, try new_node.getNode(p, Gindex.fromDepth(3, 0)));
 }
 
+test "setNodes for checkpoint tree" {
+    const allocator = std.testing.allocator;
+    var pool = try Node.Pool.init(allocator, 64);
+    defer pool.deinit();
+    const p = &pool;
+
+    const epoch_node = try pool.createLeafFromUint(42, true);
+    const root = [_]u8{0} ** 32;
+    const root_node = try pool.createLeaf(&root, true);
+    const parent = try pool.createBranch(epoch_node, root_node, true);
+
+    const new_epoch_node = try pool.createLeafFromUint(100, true);
+    const new_root_node = try pool.createLeaf(&root, true);
+
+    var new_nodes = [_]Node.Id{ new_epoch_node, new_root_node };
+    const new_parent = try parent.setNodes(p, &[_]Gindex{ Gindex.fromUint(2), Gindex.fromUint(3) }, &new_nodes);
+
+    try std.testing.expectEqual(new_epoch_node, try new_parent.getNode(p, Gindex.fromDepth(1, 0)));
+
+    var out: [2]Node.Id = undefined;
+    try new_parent.getNodesAtDepth(p, 1, 0, &out);
+    try std.testing.expectEqual(new_epoch_node, out[0]);
+    try std.testing.expectEqual(new_root_node, out[1]);
+}
+
 test "Depth helpers - round-trip setNodesAtDepth / getNodesAtDepth" {
     const allocator = std.testing.allocator;
     var pool = try Node.Pool.init(allocator, 64);

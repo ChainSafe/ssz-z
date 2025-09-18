@@ -766,7 +766,8 @@ pub const Id = enum(u32) {
             d_offset = if (i == gindices.len - 1)
                 path_len - gindex.pathLen()
             else
-                path_len - @as(Depth, @intCast(@ctz(@intFromEnum(gindex) ^ @intFromEnum(gindices[i + 1]))));
+                // path_len - @as(Depth, @intCast(@ctz(@intFromEnum(gindex) ^ @intFromEnum(gindices[i + 1]))));
+                path_len - @as(Depth, @intCast(@bitSizeOf(usize) - @clz(@intFromEnum(gindex) ^ @intFromEnum(gindices[i + 1]))));
 
             // Rebind upwards depth diff times
             try pool.rebind(
