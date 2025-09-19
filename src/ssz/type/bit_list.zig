@@ -81,31 +81,15 @@ pub fn BitList(comptime limit: comptime_int) type {
 
         pub fn getSingleTrueBit(self: *const @This()) ?usize {
             var found_index: ?usize = null;
-            const full_byte_len = self.bit_len / 8;
-            const remainder_bits = self.bit_len % 8;
 
-            for (0..full_byte_len) |i_byte| {
-                var b = self.data.items[i_byte];
+            for (self.data.items, 0..) |byte, i_byte| {
+                var b = byte;
                 while (b != 0) {
                     if (found_index != null) {
                         return null; // more than one true bit found
                     }
                     const lsb: usize = @as(u8, @ctz(b));
                     const bit_index = i_byte * 8 + lsb;
-                    found_index = bit_index;
-
-                    b &= b - 1;
-                }
-            }
-            if (remainder_bits > 0) {
-                const tail_mask: u8 = (@as(u8, 1) << @intCast(remainder_bits)) - 1;
-                var b = self.data.items[full_byte_len] & tail_mask;
-                while (b != 0) {
-                    if (found_index != null) {
-                        return null; // more than one true bit found
-                    }
-                    const lsb: usize = @as(u8, @ctz(b));
-                    const bit_index = full_byte_len * 8 + lsb;
                     found_index = bit_index;
 
                     b &= b - 1;
