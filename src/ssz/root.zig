@@ -33,6 +33,11 @@ pub const VariableVectorType = types.VariableVectorType;
 pub const FixedContainerType = types.FixedContainerType;
 pub const VariableContainerType = types.VariableContainerType;
 
+// Progressive list types
+pub const ProgressiveListType = types.ProgressiveListType;
+pub const ProgressiveByteListType = types.ProgressiveByteListType;
+pub const ProgressiveBitListType = types.ProgressiveBitListType;
+
 const hasher = @import("hasher.zig");
 pub const Hasher = hasher.Hasher;
 pub const HasherData = hasher.HasherData;
