@@ -123,11 +123,19 @@ pub fn BitList(comptime limit: comptime_int) type {
             const old_byte_len = std.math.divCeil(usize, self.bit_len, 8) catch unreachable;
             const byte_len = std.math.divCeil(usize, bit_len, 8) catch unreachable;
             try self.data.resize(allocator, byte_len);
-            self.bit_len = bit_len;
             // zero out additionally allocated bytes
             if (old_byte_len < byte_len) {
                 @memset(self.data.items[old_byte_len..], 0);
+            } else {
+                // In the case of old_byte_len >= byte_len, we need to manually zero out the
+                // trailing bits after the last bit
+                const remainder_bits = bit_len % 8;
+                if (remainder_bits != 0) {
+                    const mask: u8 = (@as(u8, 1) << @intCast(remainder_bits)) - 1;
+                    self.data.items[byte_len - 1] &= mask;
+                }
             }
+            self.bit_len = bit_len;
         }
 
         /// Set bit value at index `bit_index`
