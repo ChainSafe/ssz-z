@@ -152,7 +152,7 @@ test "alloc returns a set of unique nodes" {
     const p = &pool;
 
     var nodes: [max_depth]Node.Id = undefined;
-    try p.alloc(&nodes);
+    _ = try p.alloc(&nodes);
     defer p.free(&nodes);
 
     var node_set = std.AutoHashMap(Node.Id, void).init(allocator);
@@ -183,7 +183,7 @@ test "get/setNode" {
 
 test "setNodes for checkpoint tree" {
     const allocator = std.testing.allocator;
-    var pool = try Node.Pool.init(allocator, 64);
+    var pool = try Node.Pool.init(allocator, 10);
     defer pool.deinit();
     const p = &pool;
 
@@ -259,7 +259,7 @@ const test_cases = [_]TestCase{ createTestCase(1, [_]usize{2}), createTestCase(1
 
 test "setNodesAtDepth, setNodes vs setNode multiple times" {
     const allocator = std.testing.allocator;
-    var pool = try Node.Pool.init(allocator, 1_000_000);
+    var pool = try Node.Pool.init(allocator, 10);
     defer pool.deinit();
     const p = &pool;
 

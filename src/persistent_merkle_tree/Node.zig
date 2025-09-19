@@ -246,8 +246,10 @@ pub const Pool = struct {
     /// Note: Only the first node (`out[0]`) is pre-refed.
     ///
     /// Nodes allocated here are expected to be attached via `rebind`
-    pub fn alloc(self: *Pool, out: []Id) Allocator.Error!void {
+    /// Return true if pool has to allocate more memory, false otherwise
+    pub fn alloc(self: *Pool, out: []Id) Allocator.Error!bool {
         var states = self.nodes.items(.state);
+        var allocated: bool = false;
         for (0..out.len) |i| {
             std.debug.assert(@intFromEnum(self.next_free_node) <= self.nodes.len);
             if (@intFromEnum(self.next_free_node) == self.nodes.len) {
@@ -257,10 +259,12 @@ pub const Pool = struct {
                 // errdefer self.free(out[0..i]);
 
                 states = self.nodes.items(.state);
+                allocated = true;
             }
             out[i] = self.createUnsafe(states);
             states[@intFromEnum(out[i])] = State.branch_lazy.initRefCount(i == 0);
         }
+        return allocated;
     }
 
     /// Unrefs nodes from the pool.
@@ -466,7 +470,7 @@ pub const Id = enum(u32) {
         const path_rights = path_rights_buf[0..path_len];
         const path_parents = path_parents_buf[0..path_len];
 
-        try pool.alloc(path_parents);
+        _ = try pool.alloc(path_parents);
         errdefer pool.free(path_parents);
 
         const states = pool.nodes.items(.state);
@@ -616,9 +620,9 @@ pub const Id = enum(u32) {
         // This is the offset of the first shared depth between the two indices
         var d_offset: Depth = 0; // path_len - depth;
 
-        const states = pool.nodes.items(.state);
-        const lefts = pool.nodes.items(.left);
-        const rights = pool.nodes.items(.right);
+        var states = pool.nodes.items(.state);
+        var lefts = pool.nodes.items(.left);
+        var rights = pool.nodes.items(.right);
 
         // For each index specified
         for (0..indices.len) |i| {
@@ -626,7 +630,12 @@ pub const Id = enum(u32) {
             const index = indices[i];
             const gindex: Gindex = @enumFromInt(@as(Gindex.Uint, @intCast(@intFromEnum(base_gindex) | index)));
 
-            try pool.alloc(path_parents[d_offset..path_len]);
+            const allocated = try pool.alloc(path_parents[d_offset..path_len]);
+            if (allocated) {
+                states = pool.nodes.items(.state);
+                lefts = pool.nodes.items(.left);
+                rights = pool.nodes.items(.right);
+            }
 
             var path = gindex.toPath();
 
@@ -710,16 +719,21 @@ pub const Id = enum(u32) {
         // This is the offset of the first shared depth between the two indices
         var d_offset: Depth = 0; // path_len - depth;
 
-        const states = pool.nodes.items(.state);
-        const lefts = pool.nodes.items(.left);
-        const rights = pool.nodes.items(.right);
+        var states = pool.nodes.items(.state);
+        var lefts = pool.nodes.items(.left);
+        var rights = pool.nodes.items(.right);
 
         // For each index specified
         for (0..gindices.len) |i| {
             // Calculate the gindex bits for the current index
             const gindex = gindices[i];
 
-            try pool.alloc(path_parents_buf[d_offset..path_len]);
+            const allocated = try pool.alloc(path_parents_buf[d_offset..path_len]);
+            if (allocated) {
+                states = pool.nodes.items(.state);
+                lefts = pool.nodes.items(.left);
+                rights = pool.nodes.items(.right);
+            }
 
             var path = gindex.toPath();
 
