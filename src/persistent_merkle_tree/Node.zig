@@ -618,14 +618,14 @@ pub const Id = enum(u32) {
         var node_id = root_node;
         // The shared depth between the previous and current index
         // This is initialized as 0 since the first index has no previous index
-        var d_offset: Depth = 0; // path_len - depth;
+        var d_offset: Depth = 0;
 
         var states = pool.nodes.items(.state);
         var lefts = pool.nodes.items(.left);
         var rights = pool.nodes.items(.right);
 
-        // For each index specified, maintain/update path_lefts and path_rights from 0 all the way to path_len
-        // but only allocate and update path_parents from d_offset to path_len
+        // For each index specified, maintain/update path_lefts and path_rights from root (depth 0) all the way to path_len
+        // but only allocate and update path_parents from the next shared depth to path_len
         for (0..indices.len) |i| {
             // Calculate the gindex bits for the current index
             const index = indices[i];
@@ -633,7 +633,8 @@ pub const Id = enum(u32) {
 
             // Calculate the depth offset to navigate from current index to the next
             const next_d_offset = if (i == indices.len - 1)
-                path_len - depth
+                // 0 because there is no next index, it also means node_id is now the new root
+                0
             else
                 path_len - @as(Depth, @intCast(@bitSizeOf(usize) - @clz(index ^ indices[i + 1])));
             if (try pool.alloc(path_parents[next_d_offset..path_len])) {
@@ -725,21 +726,22 @@ pub const Id = enum(u32) {
         var node_id = root_node;
         // The shared depth between the previous and current index
         // This is initialized as 0 since the first index has no previous index
-        var d_offset: Depth = 0; // path_len - depth;
+        var d_offset: Depth = 0;
 
         var states = pool.nodes.items(.state);
         var lefts = pool.nodes.items(.left);
         var rights = pool.nodes.items(.right);
 
-        // For each index specified, maintain/update path_lefts and path_rights from 0 all the way to path_len
-        // but only allocate and update path_parents from d_offset to path_len
+        // For each index specified, maintain/update path_lefts and path_rights from root (depth 0) all the way to path_len
+        // but only allocate and update path_parents from the next shared depth to path_len
         for (0..gindices.len) |i| {
             // Calculate the gindex bits for the current index
             const gindex = gindices[i];
 
             // Calculate the depth offset to navigate from current index to the next
             const next_d_offset = if (i == gindices.len - 1)
-                path_len - gindex.pathLen()
+                // 0 because there is no next gindex, it also means node_id is now the new root
+                0
             else
                 path_len - @as(Depth, @intCast(@bitSizeOf(usize) - @clz(@intFromEnum(gindex) ^ @intFromEnum(gindices[i + 1]))));
 
