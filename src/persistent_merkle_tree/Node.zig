@@ -616,22 +616,27 @@ pub const Id = enum(u32) {
         errdefer pool.free(path_parents);
 
         var node_id = root_node;
-        // The depth offset to start from, going from the current index to the next
-        // This is the offset of the first shared depth between the two indices
+        // The shared depth between the previous and current index
+        // This is initialized as 0 since the first index has no previous index
         var d_offset: Depth = 0; // path_len - depth;
 
         var states = pool.nodes.items(.state);
         var lefts = pool.nodes.items(.left);
         var rights = pool.nodes.items(.right);
 
-        // For each index specified
+        // For each index specified, maintain/update path_lefts and path_rights from 0 all the way to path_len
+        // but only allocate and update path_parents from d_offset to path_len
         for (0..indices.len) |i| {
             // Calculate the gindex bits for the current index
             const index = indices[i];
             const gindex: Gindex = @enumFromInt(@as(Gindex.Uint, @intCast(@intFromEnum(base_gindex) | index)));
 
-            const allocated = try pool.alloc(path_parents[d_offset..path_len]);
-            if (allocated) {
+            // Calculate the depth offset to navigate from current index to the next
+            const next_d_offset = if (i == indices.len - 1)
+                path_len - depth
+            else
+                path_len - @as(Depth, @intCast(@bitSizeOf(usize) - @clz(index ^ indices[i + 1])));
+            if (try pool.alloc(path_parents[next_d_offset..path_len])) {
                 states = pool.nodes.items(.state);
                 lefts = pool.nodes.items(.left);
                 rights = pool.nodes.items(.right);
@@ -640,13 +645,20 @@ pub const Id = enum(u32) {
             var path = gindex.toPath();
 
             // Navigate down (to the depth offset), attaching any new updates
-            for (0..d_offset) |bit_i| {
-                if (path.left()) {
-                    path_lefts[bit_i] = path_parents[bit_i + 1];
-                } else {
-                    path_rights[bit_i] = path_parents[bit_i + 1];
+            // d_offset is the shared depth between the previous and current index so we can reuse path_lefts and path_rights up that point
+            // but update them to the path_parents to rebind starting from next_d_offset if needed
+            if (d_offset > next_d_offset) {
+                path.nextN(next_d_offset);
+                for (next_d_offset..d_offset) |bit_i| {
+                    if (path.left()) {
+                        path_lefts[bit_i] = path_parents[bit_i + 1];
+                    } else {
+                        path_rights[bit_i] = path_parents[bit_i + 1];
+                    }
+                    path.next();
                 }
-                path.next();
+            } else {
+                path.nextN(d_offset);
             }
 
             // Navigate down (from the depth offset) to the current index, populating parents
@@ -678,23 +690,19 @@ pub const Id = enum(u32) {
                 path_rights[path_len - 1] = nodes[i];
             }
 
-            // Calculate the depth offset to navigate from current index to the next
-            d_offset = if (i == indices.len - 1)
-                path_len - depth
-            else
-                path_len - @as(Depth, @intCast(@bitSizeOf(usize) - @clz(index ^ indices[i + 1])));
-
             // Rebind upwards depth diff times
             try pool.rebind(
-                path_parents[d_offset..path_len],
-                path_lefts[d_offset..path_len],
-                path_rights[d_offset..path_len],
+                path_parents[next_d_offset..path_len],
+                path_lefts[next_d_offset..path_len],
+                path_rights[next_d_offset..path_len],
             );
-            node_id = path_parents[d_offset];
+            node_id = path_parents[next_d_offset];
+            d_offset = next_d_offset;
         }
 
         return node_id;
     }
+
     /// Set multiple nodes in batch, editing and traversing nodes strictly once.
     /// - gindexes MUST be sorted in ascending order beforehand.
     pub fn setNodes(root_node: Id, pool: *Pool, gindices: []const Gindex, nodes: []Id) Error!Id {
@@ -715,21 +723,27 @@ pub const Id = enum(u32) {
         errdefer pool.free(&path_parents_buf);
 
         var node_id = root_node;
-        // The depth offset to start from, going from the current gindex to the next
-        // This is the offset of the first shared depth between the two indices
+        // The shared depth between the previous and current index
+        // This is initialized as 0 since the first index has no previous index
         var d_offset: Depth = 0; // path_len - depth;
 
         var states = pool.nodes.items(.state);
         var lefts = pool.nodes.items(.left);
         var rights = pool.nodes.items(.right);
 
-        // For each index specified
+        // For each index specified, maintain/update path_lefts and path_rights from 0 all the way to path_len
+        // but only allocate and update path_parents from d_offset to path_len
         for (0..gindices.len) |i| {
             // Calculate the gindex bits for the current index
             const gindex = gindices[i];
 
-            const allocated = try pool.alloc(path_parents_buf[d_offset..path_len]);
-            if (allocated) {
+            // Calculate the depth offset to navigate from current index to the next
+            const next_d_offset = if (i == gindices.len - 1)
+                path_len - gindex.pathLen()
+            else
+                path_len - @as(Depth, @intCast(@bitSizeOf(usize) - @clz(@intFromEnum(gindex) ^ @intFromEnum(gindices[i + 1]))));
+
+            if (try pool.alloc(path_parents_buf[next_d_offset..path_len])) {
                 states = pool.nodes.items(.state);
                 lefts = pool.nodes.items(.left);
                 rights = pool.nodes.items(.right);
@@ -738,13 +752,20 @@ pub const Id = enum(u32) {
             var path = gindex.toPath();
 
             // Navigate down (to the depth offset), attaching any new updates
-            for (0..d_offset) |bit_i| {
-                if (path.left()) {
-                    path_lefts_buf[bit_i] = path_parents_buf[bit_i + 1];
-                } else {
-                    path_rights_buf[bit_i] = path_parents_buf[bit_i + 1];
+            // d_offset is the shared depth between the previous and current index so we can reuse path_lefts and path_rights up that point
+            // but update them to the path_parents to rebind starting from next_d_offset if needed
+            if (d_offset > next_d_offset) {
+                path.nextN(next_d_offset);
+                for (next_d_offset..d_offset) |bit_i| {
+                    if (path.left()) {
+                        path_lefts_buf[bit_i] = path_parents_buf[bit_i + 1];
+                    } else {
+                        path_rights_buf[bit_i] = path_parents_buf[bit_i + 1];
+                    }
+                    path.next();
                 }
-                path.next();
+            } else {
+                path.nextN(d_offset);
             }
 
             // Navigate down (from the depth offset) to the current index, populating parents
@@ -776,19 +797,14 @@ pub const Id = enum(u32) {
                 path_rights_buf[path_len - 1] = nodes[i];
             }
 
-            // Calculate the depth offset to navigate from current index to the next
-            d_offset = if (i == gindices.len - 1)
-                path_len - gindex.pathLen()
-            else
-                path_len - @as(Depth, @intCast(@bitSizeOf(usize) - @clz(@intFromEnum(gindex) ^ @intFromEnum(gindices[i + 1]))));
-
             // Rebind upwards depth diff times
             try pool.rebind(
-                path_parents_buf[d_offset..path_len],
-                path_lefts_buf[d_offset..path_len],
-                path_rights_buf[d_offset..path_len],
+                path_parents_buf[next_d_offset..path_len],
+                path_lefts_buf[next_d_offset..path_len],
+                path_rights_buf[next_d_offset..path_len],
             );
-            node_id = path_parents_buf[d_offset];
+            node_id = path_parents_buf[next_d_offset];
+            d_offset = next_d_offset;
         }
 
         return node_id;
