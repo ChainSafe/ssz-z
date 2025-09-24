@@ -252,15 +252,17 @@ fn createTestCase(d: u6, gindexes: anytype, new_nodes: ?u8) TestCase {
 
 // refer to https://github.com/ChainSafe/ssz/blob/7f5580c2ea69f9307300ddb6010a8bc7ce2fc471/packages/persistent-merkle-tree/test/unit/tree.test.ts#L138
 const test_cases = [_]TestCase{
-    createTestCase(1, [_]usize{2}, null),                                                                     createTestCase(1, [_]usize{ 2, 3 }, null),                                         createTestCase(2, [_]usize{4}, null),                                                              createTestCase(2, [_]usize{6}, null),     createTestCase(2, [_]usize{ 4, 6 }, null),    createTestCase(3, [_]usize{9}, null),             createTestCase(3, [_]usize{12}, null),                createTestCase(3, [_]usize{ 9, 10 }, null),                            createTestCase(3, [_]usize{ 13, 14 }, null),           createTestCase(3, [_]usize{ 9, 10, 13, 14 }, null),    createTestCase(3, [_]usize{ 8, 9, 10, 11, 12, 13, 14, 15 }, null), createTestCase(4, [_]usize{16}, null), createTestCase(4, [_]usize{ 16, 17 }, null), createTestCase(4, [_]usize{ 16, 20 }, null), createTestCase(4, [_]usize{ 16, 20, 30 }, null), createTestCase(4, [_]usize{ 16, 20, 30, 31 }, null), createTestCase(5, [_]usize{33}, null), createTestCase(5, [_]usize{ 33, 34 }, null), createTestCase(10, [_]usize{ 1024, 1061, 1098, 1135, 1172, 1209, 1246, 1283 }, null),
+    createTestCase(1, [_]usize{2}, null),                                                                     createTestCase(1, [_]usize{ 2, 3 }, null),                                         createTestCase(2, [_]usize{4}, null),            createTestCase(2, [_]usize{6}, null),                                                              createTestCase(2, [_]usize{ 4, 6 }, null), createTestCase(3, [_]usize{9}, null),         createTestCase(3, [_]usize{12}, null),            createTestCase(3, [_]usize{ 9, 10 }, null),           createTestCase(3, [_]usize{ 13, 14 }, null),                           createTestCase(3, [_]usize{ 9, 10, 13, 14 }, null),    createTestCase(3, [_]usize{ 8, 9, 10, 11, 12, 13, 14, 15 }, null), createTestCase(4, [_]usize{16}, null), createTestCase(4, [_]usize{ 16, 17 }, null), createTestCase(4, [_]usize{ 16, 20 }, null), createTestCase(4, [_]usize{ 16, 20, 30 }, null), createTestCase(4, [_]usize{ 16, 20, 30, 31 }, null), createTestCase(5, [_]usize{33}, null), createTestCase(5, [_]usize{ 33, 34 }, null), createTestCase(10, [_]usize{ 1024, 1061, 1098, 1135, 1172, 1209, 1246, 1283 }, null),
     createTestCase(40, [_]usize{ (2 << 39) + 1000, (2 << 39) + 1_000_000, (2 << 39) + 1_000_000_000 }, null), createTestCase(40, [_]usize{ 1157505940782, 1349082402477, 1759777921993 }, null),
+    // 2 nodes next to each other at depth 4 but not sharing the same parent
+    createTestCase(4, [_]usize{ 17, 18, 31 }, null),
     // new tests to also confirm the new nodes created to make sure there is no leaked/orphaned nodes during setNodes apis
     // set all leaves at depth 4, need 15 new branch nodes
     createTestCase(4, [_]usize{ 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31 }, 15),
     // set first and last leafs, need 7 new branch nodes
     createTestCase(4, [_]usize{ 16, 31 }, 7),
     // set first, second last and last leafs, need 7 new branch nodes
-    createTestCase(4, [_]usize{ 16, 30, 31 }, 7),
+     createTestCase(4, [_]usize{ 16, 30, 31 }, 7),
     // same to above plus first node in the right branch, need 9 new branch nodes
     createTestCase(4, [_]usize{ 16, 24, 30, 31 }, 9),
     // same to above, 24 and 25 should need only 1 parent, still need 9 new branch nodes
