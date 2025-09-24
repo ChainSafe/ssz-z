@@ -206,39 +206,35 @@ test "setNodes for checkpoint tree" {
     try std.testing.expectEqual(new_root_node, out[1]);
 }
 
-// test "Depth helpers - round-trip setNodesAtDepth / getNodesAtDepth" {
-//     std.debug.print("@@@ roundtrip test START setNodesAtDepth / getNodesAtDepth \n", .{});
-//     const allocator = std.testing.allocator;
-//     var pool = try Node.Pool.init(allocator, 64);
-//     defer pool.deinit();
-//     const p = &pool;
+test "Depth helpers - round-trip setNodesAtDepth / getNodesAtDepth" {
+    const allocator = std.testing.allocator;
+    var pool = try Node.Pool.init(allocator, 64);
+    defer pool.deinit();
+    const p = &pool;
 
-//     // A ‘blank’ root: branch of two depth‑1 zero‑nodes ensures proper navigation
-//     // const root = try pool.createBranch(@enumFromInt(1), @enumFromInt(1), true);
-//     const root = try pool.createBranch(@enumFromInt(2), @enumFromInt(2), true);
+    // A ‘blank’ root: branch of two depth‑1 zero‑nodes ensures proper navigation
+    const root = try pool.createBranch(@enumFromInt(1), @enumFromInt(1), true);
 
-//     // Four leaves to be inserted at depth 2 (gindexes 4-7)
-//     var leaves: [8]Node.Id = undefined;
-//     for (0..8) |i| leaves[i] = try pool.createLeafFromUint(@intCast(i + 100), true);
+    // Four leaves to be inserted at depth 2 (gindexes 4-7)
+    var leaves: [4]Node.Id = undefined;
+    for (0..4) |i| leaves[i] = try pool.createLeafFromUint(@intCast(i + 100), true);
 
-//     const indices = [_]usize{ 0, 1, 2, 3, 4, 5, 6, 7 };
-//     const depth: u8 = 3;
+    const indices = [_]usize{ 0, 1, 2, 3 };
+    const depth: u8 = 2;
 
-//     const new_root = try root.setNodesAtDepth(p, depth, &indices, &leaves);
+    const new_root = try root.setNodesAtDepth(p, depth, &indices, &leaves);
 
-//     // Verify individual look‑ups
-//     for (indices, 0..) |idx, i| {
-//         const g = Gindex.fromDepth(depth, idx);
-//         try std.testing.expectEqual(leaves[i], try new_root.getNode(p, g));
-//     }
+    // Verify individual look‑ups
+    for (indices, 0..) |idx, i| {
+        const g = Gindex.fromDepth(depth, idx);
+        try std.testing.expectEqual(leaves[i], try new_root.getNode(p, g));
+    }
 
-//     // Verify bulk retrieval helper
-//     var out: [8]Node.Id = undefined;
-//     try new_root.getNodesAtDepth(p, depth, 0, &out);
-//     for (0..8) |i| try std.testing.expectEqual(leaves[i], out[i]);
-
-//     std.debug.print("@@@ roundtrip test END setNodesAtDepth / getNodesAtDepth\n", .{});
-// }
+    // Verify bulk retrieval helper
+    var out: [4]Node.Id = undefined;
+    try new_root.getNodesAtDepth(p, depth, 0, &out);
+    for (0..4) |i| try std.testing.expectEqual(leaves[i], out[i]);
+}
 
 const TestCase = struct {
     depth: u6,
