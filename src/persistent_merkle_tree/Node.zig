@@ -793,16 +793,20 @@ pub const Id = enum(u32) {
 
         // For each index specified, maintain/update path_lefts and path_rights from root (depth 0) all the way to path_len
         // but only allocate and update path_parents from the next shared depth to path_len
-        for (0..gindices.len) |i| {
+        var i: usize = 0;
+        while (i < gindices.len) : (i += 1) {
             // Calculate the gindex bits for the current index
             const gindex = gindices[i];
 
+            // warning: this next_index variable is not correct for the last index
+            const next_gindex = if (i + 1 < gindices.len) gindices[i + 1] else gindex;
+            const consume_next: bool = if (i + 1 < gindices.len and @intFromEnum(gindex) + 1 == @intFromEnum(next_gindex) and gindex.toPath().leftN(path_len - 1)) true else false;
             // Calculate the depth offset to navigate from current index to the next
-            const next_d_offset = if (i == gindices.len - 1)
+            const next_d_offset = if (i + 1 == gindices.len or (i + 2 == gindices.len and consume_next))
                 // 0 because there is no next gindex, it also means node_id is now the new root
                 0
             else
-                path_len - @as(Depth, @intCast(@bitSizeOf(usize) - @clz(@intFromEnum(gindex) ^ @intFromEnum(gindices[i + 1]))));
+                path_len - @as(Depth, @intCast(@bitSizeOf(usize) - @clz(@intFromEnum(gindex) ^ if (consume_next) @intFromEnum(gindices[i + 2]) else @intFromEnum(next_gindex))));
 
             if (try pool.alloc(path_parents_buf[next_d_offset..path_len])) {
                 states = pool.nodes.items(.state);
@@ -866,7 +870,7 @@ pub const Id = enum(u32) {
             }
             if (path.left()) {
                 path_lefts_buf[path_len - 1] = nodes[i];
-                path_rights_buf[path_len - 1] = rights[@intFromEnum(node_id)];
+                path_rights_buf[path_len - 1] = if (consume_next) nodes[i + 1] else rights[@intFromEnum(node_id)];
                 right_move[path_len - 1] = false;
                 unfinalized_parents_buf[path_len - 1] = path_parents_buf[path_len - 1];
             } else {
@@ -892,6 +896,11 @@ pub const Id = enum(u32) {
 
             node_id = path_parents_buf[next_d_offset];
             d_offset = next_d_offset;
+
+            if (consume_next) {
+                // Move pointer one extra forward since node has consumed two nodes
+                i += 1;
+            }
         }
 
         return node_id;
