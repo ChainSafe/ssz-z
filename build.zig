@@ -6,11 +6,11 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const dep_hashtree = b.dependency("hashtree", .{});
+
     const dep_snappy = b.dependency("snappy", .{});
 
     const dep_yaml = b.dependency("yaml", .{});
-
-    const dep_hashtree = b.dependency("hashtree", .{});
 
     const dep_zbench = b.dependency("zbench", .{});
 
