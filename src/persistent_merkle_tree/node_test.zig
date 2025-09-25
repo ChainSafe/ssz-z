@@ -249,13 +249,42 @@ fn createTestCase(d: u6, gindexes: anytype) TestCase {
 }
 
 // refer to https://github.com/ChainSafe/ssz/blob/7f5580c2ea69f9307300ddb6010a8bc7ce2fc471/packages/persistent-merkle-tree/test/unit/tree.test.ts#L138
-const test_cases = [_]TestCase{ createTestCase(1, [_]usize{2}), createTestCase(1, [_]usize{ 2, 3 }), createTestCase(2, [_]usize{4}), createTestCase(2, [_]usize{6}), createTestCase(2, [_]usize{ 4, 6 }), createTestCase(3, [_]usize{9}), createTestCase(3, [_]usize{12}), createTestCase(3, [_]usize{ 9, 10 }), createTestCase(3, [_]usize{ 13, 14 }), createTestCase(3, [_]usize{ 9, 10, 13, 14 }), createTestCase(3, [_]usize{ 8, 9, 10, 11, 12, 13, 14, 15 }), createTestCase(4, [_]usize{16}), createTestCase(4, [_]usize{ 16, 17 }), createTestCase(4, [_]usize{ 16, 20 }), createTestCase(4, [_]usize{ 16, 20, 30 }), createTestCase(4, [_]usize{ 16, 20, 30, 31 }), createTestCase(5, [_]usize{33}), createTestCase(5, [_]usize{ 33, 34 }), createTestCase(10, [_]usize{ 1024, 1061, 1098, 1135, 1172, 1209, 1246, 1283 }), createTestCase(
-    40,
-    [_]usize{ (2 << 39) + 1000, (2 << 39) + 1_000_000, (2 << 39) + 1_000_000_000 },
-), createTestCase(
-    40,
-    [_]usize{ 1157505940782, 1349082402477, 1759777921993 },
-) };
+const test_cases = [_]TestCase{
+    // depth 1
+    createTestCase(1, [_]usize{2}),
+    createTestCase(1, [_]usize{ 2, 3 }),
+    // depth 2
+    createTestCase(2, [_]usize{4}),
+    createTestCase(2, [_]usize{6}),
+    createTestCase(2, [_]usize{ 4, 6 }),
+    // depth 3
+    createTestCase(3, [_]usize{9}),
+    createTestCase(3, [_]usize{12}),
+    createTestCase(3, [_]usize{ 9, 10 }),
+    createTestCase(3, [_]usize{ 13, 14 }),
+    createTestCase(3, [_]usize{ 9, 10, 13, 14 }),
+    createTestCase(3, [_]usize{ 8, 9, 10, 11, 12, 13, 14, 15 }),
+    // depth 4
+    createTestCase(4, [_]usize{16}),
+    createTestCase(4, [_]usize{ 16, 17 }),
+    createTestCase(4, [_]usize{ 16, 20 }),
+    createTestCase(4, [_]usize{ 16, 20, 30 }),
+    createTestCase(4, [_]usize{ 16, 20, 30, 31 }),
+    // depth 5
+    createTestCase(5, [_]usize{33}),
+    createTestCase(5, [_]usize{ 33, 34 }),
+    // depth 10
+    createTestCase(10, [_]usize{ 1024, 1061, 1098, 1135, 1172, 1209, 1246, 1283 }),
+    // depth 40
+    createTestCase(
+        40,
+        [_]usize{ (2 << 39) + 1000, (2 << 39) + 1_000_000, (2 << 39) + 1_000_000_000 },
+    ),
+    createTestCase(
+        40,
+        [_]usize{ 1157505940782, 1349082402477, 1759777921993 },
+    ),
+};
 
 test "setNodesAtDepth, setNodes vs setNode multiple times" {
     const allocator = std.testing.allocator;
