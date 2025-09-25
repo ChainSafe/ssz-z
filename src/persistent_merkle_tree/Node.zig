@@ -647,10 +647,11 @@ pub const Id = enum(u32) {
             // Calculate the gindex bits for the current index
             const index = indices[i];
             const gindex: Gindex = @enumFromInt(@as(Gindex.Uint, @intCast(@intFromEnum(base_gindex) | index)));
+            var path = gindex.toPath();
 
             // warning: this next_index variable is not correct for the last index
             const next_index = if (i + 1 < indices.len) indices[i + 1] else index;
-            const consume_next: bool = if (i + 1 < indices.len and index + 1 == next_index and gindex.toPath().leftN(path_len - 1)) true else false;
+            const consume_next: bool = if (i + 1 < indices.len and index + 1 == next_index and path.leftN(path_len - 1)) true else false;
             // Calculate the depth offset to navigate from current index to the next
             const next_d_offset = if (i + 1 == indices.len or (i + 2 == indices.len and consume_next))
                 // 0 because there is no next index, it also means node_id is now the new root
@@ -663,8 +664,6 @@ pub const Id = enum(u32) {
                 lefts = pool.nodes.items(.left);
                 rights = pool.nodes.items(.right);
             }
-
-            var path = gindex.toPath();
 
             // Navigate down (to the depth offset), attaching any new updates
             // d_offset is the shared depth between the previous and current index so we can reuse path_lefts and path_rights up that point
@@ -797,10 +796,11 @@ pub const Id = enum(u32) {
         while (i < gindices.len) : (i += 1) {
             // Calculate the gindex bits for the current index
             const gindex = gindices[i];
+            var path = gindex.toPath();
 
             // warning: this next_index variable is not correct for the last index
             const next_gindex = if (i + 1 < gindices.len) gindices[i + 1] else gindex;
-            const consume_next: bool = if (i + 1 < gindices.len and @intFromEnum(gindex) + 1 == @intFromEnum(next_gindex) and gindex.toPath().leftN(path_len - 1)) true else false;
+            const consume_next: bool = if (i + 1 < gindices.len and @intFromEnum(gindex) + 1 == @intFromEnum(next_gindex) and path.leftN(path_len - 1)) true else false;
             // Calculate the depth offset to navigate from current index to the next
             const next_d_offset = if (i + 1 == gindices.len or (i + 2 == gindices.len and consume_next))
                 // 0 because there is no next gindex, it also means node_id is now the new root
@@ -813,8 +813,6 @@ pub const Id = enum(u32) {
                 lefts = pool.nodes.items(.left);
                 rights = pool.nodes.items(.right);
             }
-
-            var path = gindex.toPath();
 
             // Navigate down (to the depth offset), attaching any new updates
             // d_offset is the shared depth between the previous and current index so we can reuse path_lefts and path_rights up that point
