@@ -152,7 +152,7 @@ test "alloc returns a set of unique nodes" {
     const p = &pool;
 
     var nodes: [max_depth]Node.Id = undefined;
-    try p.alloc(&nodes);
+    _ = try p.alloc(&nodes);
     defer p.free(&nodes);
 
     var node_set = std.AutoHashMap(Node.Id, void).init(allocator);
@@ -183,7 +183,7 @@ test "get/setNode" {
 
 test "setNodes for checkpoint tree" {
     const allocator = std.testing.allocator;
-    var pool = try Node.Pool.init(allocator, 64);
+    var pool = try Node.Pool.init(allocator, 10);
     defer pool.deinit();
     const p = &pool;
 
@@ -234,6 +234,96 @@ test "Depth helpers - round-trip setNodesAtDepth / getNodesAtDepth" {
     var out: [4]Node.Id = undefined;
     try new_root.getNodesAtDepth(p, depth, 0, &out);
     for (0..4) |i| try std.testing.expectEqual(leaves[i], out[i]);
+}
+
+const TestCase = struct {
+    depth: u6,
+    gindexes: []const usize,
+};
+
+fn createTestCase(d: u6, gindexes: anytype) TestCase {
+    return .{
+        .depth = d,
+        .gindexes = &gindexes,
+    };
+}
+
+// refer to https://github.com/ChainSafe/ssz/blob/7f5580c2ea69f9307300ddb6010a8bc7ce2fc471/packages/persistent-merkle-tree/test/unit/tree.test.ts#L138
+const test_cases = [_]TestCase{
+    // depth 1
+    createTestCase(1, [_]usize{2}),
+    createTestCase(1, [_]usize{ 2, 3 }),
+    // depth 2
+    createTestCase(2, [_]usize{4}),
+    createTestCase(2, [_]usize{6}),
+    createTestCase(2, [_]usize{ 4, 6 }),
+    // depth 3
+    createTestCase(3, [_]usize{9}),
+    createTestCase(3, [_]usize{12}),
+    createTestCase(3, [_]usize{ 9, 10 }),
+    createTestCase(3, [_]usize{ 13, 14 }),
+    createTestCase(3, [_]usize{ 9, 10, 13, 14 }),
+    createTestCase(3, [_]usize{ 8, 9, 10, 11, 12, 13, 14, 15 }),
+    // depth 4
+    createTestCase(4, [_]usize{16}),
+    createTestCase(4, [_]usize{ 16, 17 }),
+    createTestCase(4, [_]usize{ 16, 20 }),
+    createTestCase(4, [_]usize{ 16, 20, 30 }),
+    createTestCase(4, [_]usize{ 16, 20, 30, 31 }),
+    // depth 5
+    createTestCase(5, [_]usize{33}),
+    createTestCase(5, [_]usize{ 33, 34 }),
+    // depth 10
+    createTestCase(10, [_]usize{ 1024, 1061, 1098, 1135, 1172, 1209, 1246, 1283 }),
+    // depth 40
+    createTestCase(
+        40,
+        [_]usize{ (2 << 39) + 1000, (2 << 39) + 1_000_000, (2 << 39) + 1_000_000_000 },
+    ),
+    createTestCase(
+        40,
+        [_]usize{ 1157505940782, 1349082402477, 1759777921993 },
+    ),
+};
+
+test "setNodesAtDepth, setNodes vs setNode multiple times" {
+    const allocator = std.testing.allocator;
+    var pool = try Node.Pool.init(allocator, 10);
+    defer pool.deinit();
+    const p = &pool;
+
+    for (test_cases) |tc| {
+        const depth = tc.depth;
+        const base_gindex = Gindex.fromDepth(depth, 0);
+        var gindexes = try allocator.alloc(Gindex, tc.gindexes.len);
+        defer allocator.free(gindexes);
+        var indexes = try allocator.alloc(usize, gindexes.len);
+        defer allocator.free(indexes);
+        var leaves = try allocator.alloc(Node.Id, gindexes.len);
+        defer allocator.free(leaves);
+        var root_ok: Node.Id = @enumFromInt(depth);
+        var root: Node.Id = @enumFromInt(depth);
+        var root2: Node.Id = @enumFromInt(depth);
+
+        for (tc.gindexes, 0..) |gindex, i| {
+            gindexes[i] = Gindex.fromUint(@intCast(gindex));
+            indexes[i] = gindex - @intFromEnum(base_gindex);
+            const leaf = try pool.createLeafFromUint(@intCast(gindex), true);
+            leaves[i] = leaf;
+            root_ok = try root_ok.setNode(p, gindexes[i], leaf);
+        }
+
+        root = try root.setNodesAtDepth(p, depth, indexes, leaves);
+        root2 = try root.setNodes(p, gindexes, leaves);
+
+        const hash_ok = root_ok.getRoot(p);
+
+        const hash = root.getRoot(p);
+        try std.testing.expectEqualSlices(u8, hash_ok, hash);
+
+        const hash2 = root2.getRoot(p);
+        try std.testing.expectEqualSlices(u8, hash_ok, hash2);
+    }
 }
 
 test "hashing sanity check" {
