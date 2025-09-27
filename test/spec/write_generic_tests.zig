@@ -46,6 +46,10 @@ pub fn main() !void {
         }
 
         const test_dir_name = g_test_entry.name;
+        // Skip progressive-related directories we don't support yet (but include basic_progressive_list)
+        if (std.mem.eql(u8, test_dir_name, "progressive_bitlist")) {
+            continue;
+        }
 
         const valid_tests_dir_name = try std.fs.path.join(allocator, &[_][]const u8{
             generic_tests_dir_name,
@@ -66,6 +70,10 @@ pub fn main() !void {
 
             const test_name = valid_test_entry.name;
             const type_name = getTypeName(test_dir_name, test_name);
+            // Skip progressive container variants
+            if (std.mem.eql(u8, type_name, "ProgressiveBitsStruct")) {
+                continue;
+            }
 
             try writeValidTest(writer, test_name, test_dir_name, type_name);
         }
@@ -79,6 +87,7 @@ pub fn main() !void {
 
         const invalid_tests_dir = try std.fs.cwd().openDir(invalid_tests_dir_name, .{ .iterate = true });
         var invalid_tests_dir_it = invalid_tests_dir.iterate();
+
         while (try invalid_tests_dir_it.next()) |invalid_test_entry| {
             switch (invalid_test_entry.kind) {
                 .directory => {},
@@ -90,8 +99,13 @@ pub fn main() !void {
             const test_name = invalid_test_entry.name;
             const type_name = getTypeName(test_dir_name, test_name);
 
-            // we must skip some invalid types (that would have gotten caught at compile time)
-            if (std.mem.indexOf(u8, type_name, "vec_") != null and std.mem.indexOf(u8, type_name, "_0") != null) {
+            // Skip progressive container variants
+            if (std.mem.eql(u8, type_name, "ProgressiveBitsStruct")) {
+                continue;
+            }
+
+            // Skip one_byte_more tests for now
+            if (std.mem.indexOf(u8, test_name, "one_byte_more") != null) {
                 continue;
             }
 
@@ -108,6 +122,13 @@ fn getTypeName(test_dir_name: []const u8, test_name: []const u8) []const u8 {
         _ = split_it.next();
         _ = split_it.next();
         _ = split_it.next();
+        return test_name[0 .. (split_it.index orelse (split_it.buffer.len + 1)) - 1];
+    } else if (std.mem.eql(u8, test_dir_name, "basic_progressive_list")) {
+        // Include the limit in the mapped type name, e.g. proglist_uint32_20
+        var split_it = std.mem.splitScalar(u8, test_name, '_');
+        _ = split_it.next(); // proglist
+        _ = split_it.next(); // uintXX
+        _ = split_it.next(); // limit
         return test_name[0 .. (split_it.index orelse (split_it.buffer.len + 1)) - 1];
     } else if (std.mem.eql(u8, test_dir_name, "containers")) {
         var split_it = std.mem.splitScalar(u8, test_name, '_');

@@ -6,6 +6,7 @@ pub const types = @import("type/root.zig");
 pub const TypeKind = types.TypeKind;
 pub const isBasicType = types.isBasicType;
 pub const isFixedType = types.isFixedType;
+pub const isProgressiveListType = types.isProgressiveListType;
 
 pub const BoolType = types.BoolType;
 pub const UintType = types.UintType;
@@ -32,6 +33,10 @@ pub const VariableVectorType = types.VariableVectorType;
 
 pub const FixedContainerType = types.FixedContainerType;
 pub const VariableContainerType = types.VariableContainerType;
+
+// Progressive list types
+pub const FixedProgressiveListType = types.FixedProgressiveListType;
+pub const VariableProgressiveListType = types.VariableProgressiveListType;
 
 const hasher = @import("hasher.zig");
 pub const Hasher = hasher.Hasher;
