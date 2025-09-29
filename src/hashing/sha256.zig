@@ -12,10 +12,10 @@ pub fn hashOne(out: *[32]u8, left: *const [32]u8, right: *const [32]u8) void {
     hashtree.hash(@ptrCast(out), &in) catch unreachable;
 }
 
-const maxHash = 8;
-/// Hash up to `maxHash` pairs of 32-byte arrays into `maxHash` 32-byte outputs.
+const max_batch_hash = 16;
+/// Hash up to `max_batch_hash` pairs of 32-byte arrays into `max_batch_hash` 32-byte outputs.
 pub fn hashMulti(out: []*[32]u8, ins: []*const [32]u8) !void {
-    if (out.len > maxHash) {
+    if (out.len > max_batch_hash) {
         return error.OutOverflow;
     }
 
@@ -27,13 +27,17 @@ pub fn hashMulti(out: []*[32]u8, ins: []*const [32]u8) !void {
         return;
     }
 
-    var in_buf: [maxHash * 2][32]u8 = undefined;
+    var in_buf: [max_batch_hash * 2][32]u8 = undefined;
     for (ins, 0..) |in, i| {
         in_buf[i] = in.*;
     }
 
-    var out_buf: [maxHash][32]u8 = undefined;
+    var out_buf: [max_batch_hash][32]u8 = undefined;
     try hashtree.hash(out_buf[0..out.len], in_buf[0..ins.len]);
+
+    for (out, 0..) |item, i| {
+        item.* = out_buf[i];
+    }
 }
 
 test "hashOne works correctly" {
@@ -88,4 +92,84 @@ test hashMulti {
             try std.testing.expectEqualSlices(u8, &out[0], &out[i]);
         }
     }
+}
+
+// test "hashMulti vs hashOne" {
+//     const len = 16;
+//     var now = std.time.nanoTimestamp();
+
+//     const ins = [_][32]u8{
+//         [_]u8{1} ** 32,
+//         [_]u8{2} ** 32,
+//     } ** len;
+//     var in_ptrs: [len * 2]*const [32]u8 = undefined;
+//     inline for (0..len) |i| {
+//         in_ptrs[i * 2] = &ins[i * 2];
+//         in_ptrs[i * 2 + 1] = &ins[i * 2 + 1];
+//     }
+
+//     const iterations = 1_000;
+//     for (0..iterations) |_| {
+//         var out = [_][32]u8{
+//             [_]u8{0} ** 32,
+//         } ** len;
+//         var out_ptrs: [len]*[32]u8 = undefined;
+//         inline for (0..len) |i| {
+//             out_ptrs[i] = &out[i];
+//         }
+
+//         try hashMulti(out_ptrs[0..], in_ptrs[0..]);
+//         // inline for (1..len) |i| {
+//         //     try std.testing.expectEqualSlices(u8, &out[0], &out[i]);
+//         // }
+//     }
+//     std.debug.print("hashMulti: {d} ns\n", .{std.time.nanoTimestamp() - now});
+
+//     now = std.time.nanoTimestamp();
+//     const ins_2 = [_][32]u8{
+//         [_]u8{1} ** 32,
+//         [_]u8{2} ** 32,
+//     };
+//     for (0..iterations) |_| {
+//         for (0..len) |_| {
+//             var out: [32]u8 = undefined;
+//             hashOne(&out, &ins_2[0], &ins_2[1]);
+//         }
+//     }
+//     std.debug.print("hashOne performance: {d} ns\n", .{std.time.nanoTimestamp() - now});
+// }
+
+test "hashTree.hash one vs multi" {
+    const len = 4;
+
+    // test data
+    const ins = [_][32]u8{
+        [_]u8{1} ** 32,
+        [_]u8{2} ** 32,
+    } ** len;
+
+    const iterations = 1000;
+
+    var now = std.time.nanoTimestamp();
+    std.debug.print("hashOne.hash: start batch {d} \n", .{len});
+    for (0..iterations) |_| {
+        var out = [_][32]u8{
+            [_]u8{0} ** 32,
+        } ** len;
+        try hashtree.hash(&out, &ins);
+    }
+    std.debug.print("hashOne.hash: end batch {d} {d} ns\n", .{ len, std.time.nanoTimestamp() - now });
+
+    now = std.time.nanoTimestamp();
+    std.debug.print("hashOne.hash: start single {d} times \n", .{len});
+    for (0..iterations) |_| {
+        for (0..len) |i| {
+            var out = [_][32]u8{
+                [_]u8{0} ** 32,
+            };
+            var in_pair = [_][32]u8{ ins[i * 2], ins[i * 2 + 1] };
+            try hashtree.hash(&out, &in_pair);
+        }
+    }
+    std.debug.print("hashOne.hash: end single {d} times {d} ns\n", .{ len, std.time.nanoTimestamp() - now });
 }
