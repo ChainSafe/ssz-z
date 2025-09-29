@@ -142,20 +142,19 @@ test hashMulti {
 test "hashTree.hash one vs multi" {
     const len = 4;
 
-    // test data
     const ins = [_][32]u8{
         [_]u8{1} ** 32,
         [_]u8{2} ** 32,
     } ** len;
 
-    const iterations = 1000;
+    const iterations = 1_000;
 
+    var out = [_][32]u8{
+        [_]u8{0} ** 32,
+    } ** len;
     var now = std.time.nanoTimestamp();
     std.debug.print("hashOne.hash: start batch {d} \n", .{len});
     for (0..iterations) |_| {
-        var out = [_][32]u8{
-            [_]u8{0} ** 32,
-        } ** len;
         try hashtree.hash(&out, &ins);
     }
     std.debug.print("hashOne.hash: end batch {d} {d} ns\n", .{ len, std.time.nanoTimestamp() - now });
@@ -164,11 +163,7 @@ test "hashTree.hash one vs multi" {
     std.debug.print("hashOne.hash: start single {d} times \n", .{len});
     for (0..iterations) |_| {
         for (0..len) |i| {
-            var out = [_][32]u8{
-                [_]u8{0} ** 32,
-            };
-            var in_pair = [_][32]u8{ ins[i * 2], ins[i * 2 + 1] };
-            try hashtree.hash(&out, &in_pair);
+            try hashtree.hash(out[i .. i + 1], ins[2 * i .. 2 * i + 2]);
         }
     }
     std.debug.print("hashOne.hash: end single {d} times {d} ns\n", .{ len, std.time.nanoTimestamp() - now });
