@@ -3,6 +3,7 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 
 const hashOne = @import("hashing").hashOne;
+const hashFn = @import("hashing").hash;
 const getZeroHash = @import("hashing").getZeroHash;
 const max_depth = @import("hashing").max_depth;
 const Depth = @import("hashing").Depth;
@@ -122,6 +123,7 @@ pub const Pool = struct {
     allocator: Allocator,
     nodes: std.MultiArrayList(Node).Slice,
     next_free_node: Id,
+    lazy_nodes_by_level: []std.ArrayList(Id),
 
     pub const free_bit: u32 = 0x80000000;
     pub const max_ref_count: u32 = 0x7FFFFFFF;
@@ -132,6 +134,7 @@ pub const Pool = struct {
             .allocator = allocator,
             .nodes = undefined,
             .next_free_node = @enumFromInt(max_depth),
+            .lazy_nodes_by_level = try allocator.alloc(std.ArrayList(Id), max_depth),
         };
 
         if (pool_size + max_depth >= free_bit) {
@@ -156,11 +159,21 @@ pub const Pool = struct {
 
         try pool.preheat(pool_size);
 
+        for (0..max_depth) |i| {
+            // pool.lazy_nodes_by_level[i] = std.ArrayList(Id).init(allocator);
+            // TODO
+            pool.lazy_nodes_by_level[i] = try std.ArrayList(Id).initCapacity(allocator, 10_000);
+        }
+
         return pool;
     }
 
     pub fn deinit(self: *Pool) void {
         self.nodes.deinit(self.allocator);
+        for (self.lazy_nodes_by_level) |list| {
+            list.deinit();
+        }
+        self.allocator.free(self.lazy_nodes_by_level);
         self.* = undefined;
     }
 
@@ -369,6 +382,87 @@ pub const Pool = struct {
             states[@intFromEnum(id)] = State.initNextFree(self.next_free_node);
             self.next_free_node = id;
         }
+    }
+
+    /// batch hash and return the root hash of the tree
+    /// this should be faster than calling getRoot on the Id directly except for Apple Silicon
+    pub fn getRoot(self: *Pool, node_id: Id) !*const [32]u8 {
+        const states = self.nodes.items(.state);
+        const hashes = self.nodes.items(.hash);
+        if (states[@intFromEnum(node_id)].isLeaf() or states[@intFromEnum(node_id)].isBranchComputed() or states[@intFromEnum(node_id)].isZero()) {
+            return &hashes[@intFromEnum(node_id)];
+        }
+
+        // node_id is a lazy branch
+        const lefts = self.nodes.items(.left);
+        const rights = self.nodes.items(.right);
+        for (self.lazy_nodes_by_level) |*list| {
+            try list.resize(0);
+        }
+
+        try self.lazy_nodes_by_level[0].append(node_id);
+        var level: Depth = 0;
+        // this will always terminate because the last level is all leaf nodes
+        while (self.lazy_nodes_by_level[level].items.len > 0 and level < max_depth) {
+            const next_level_nodes = &self.lazy_nodes_by_level[level + 1];
+            for (self.lazy_nodes_by_level[level].items) |id| {
+                const left = lefts[@intFromEnum(id)];
+                const right = rights[@intFromEnum(id)];
+                if (states[@intFromEnum(left)].isBranchLazy()) {
+                    try next_level_nodes.append(left);
+                }
+                if (states[@intFromEnum(right)].isBranchLazy()) {
+                    try next_level_nodes.append(right);
+                }
+            }
+            level += 1;
+        }
+
+        // batch hash bottom-up
+        level = level - 1;
+        // best SIMD implementation is 512bits = 64 bytes
+        // given sha256 operates on a block of 4 bytes, we can hash 16 inputs at a time
+        const batch_size = 16;
+        var in_buf: [batch_size * 2][32]u8 = undefined;
+        var out_buf: [batch_size][32]u8 = undefined;
+        while (level >= 0) {
+            var level_nodes = self.lazy_nodes_by_level[level];
+            var offset: usize = 0;
+            while (offset < level_nodes.items.len) {
+                const batch_end = @min(offset + batch_size, level_nodes.items.len);
+
+                // populate in_buf
+                for (level_nodes.items[offset..batch_end], 0..) |id, i| {
+                    const left = lefts[@intFromEnum(id)];
+                    const right = rights[@intFromEnum(id)];
+
+                    in_buf[2 * i] = hashes[@intFromEnum(left)];
+                    in_buf[2 * i + 1] = hashes[@intFromEnum(right)];
+                }
+
+                // call batch_hash and populate out_buf
+                try hashFn(out_buf[0 .. batch_end - offset], in_buf[0 .. 2 * (batch_end - offset)]);
+
+                // populate hashes
+                for (level_nodes.items[offset..batch_end], 0..) |id, i| {
+                    hashes[@intFromEnum(id)] = out_buf[i];
+                    states[@intFromEnum(id)].setBranchComputed();
+                }
+                offset = batch_end;
+            } // done for all nodes of this level
+
+            // clean up, move to the next level
+            try level_nodes.resize(0);
+
+            if (level == 0) break;
+            level -= 1;
+        } // done for all levels
+
+        if (!states[@intFromEnum(node_id)].isBranchComputed()) {
+            return error.InvalidComputation;
+        }
+
+        return &hashes[@intFromEnum(node_id)];
     }
 };
 

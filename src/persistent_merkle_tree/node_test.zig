@@ -344,3 +344,35 @@ test "hashing sanity check" {
 
     try std.testing.expectEqualSlices(u8, zero2.getRoot(p), branch2.getRoot(p));
 }
+
+test "batch hash" {
+    const depth = 40;
+
+    var node_ok: Node.Id = @enumFromInt(depth);
+    var node: Node.Id = @enumFromInt(depth);
+
+    const allocator = std.testing.allocator;
+    var pool = try Node.Pool.init(allocator, 10);
+    defer pool.deinit();
+    const p = &pool;
+
+    const num_leaves = 100_000;
+    var leaves = try allocator.alloc(Node.Id, num_leaves);
+    defer allocator.free(leaves);
+    var indexes = try allocator.alloc(usize, num_leaves);
+    defer allocator.free(indexes);
+
+    for (0..num_leaves) |i| {
+        leaves[i] = try pool.createLeafFromUint(@intCast(i), true);
+        indexes[i] = i;
+    }
+
+    node_ok = try node_ok.setNodesAtDepth(p, depth, indexes, leaves);
+    node = try node.setNodesAtDepth(p, depth, indexes, leaves);
+
+    const root_ok = node_ok.getRoot(p);
+
+    const root = try pool.getRoot(node);
+
+    try std.testing.expectEqualSlices(u8, root_ok, root);
+}
