@@ -370,9 +370,13 @@ test "batch hash" {
     node_ok = try node_ok.setNodesAtDepth(p, depth, indexes, leaves);
     node = try node.setNodesAtDepth(p, depth, indexes, leaves);
 
+    var now = std.time.nanoTimestamp();
     const root_ok = node_ok.getRoot(p);
+    std.debug.print("node_ok.getRoot took {d} ns\n", .{std.time.nanoTimestamp() - now});
 
+    now = std.time.nanoTimestamp();
     const root = try pool.getRoot(node);
+    std.debug.print("pool.getRoot took {d} ns\n", .{std.time.nanoTimestamp() - now});
 
     try std.testing.expectEqualSlices(u8, root_ok, root);
 }
