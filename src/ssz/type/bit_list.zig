@@ -577,3 +577,26 @@ test "clone" {
     try expectEqualRootsAlloc(Bits, allocator, b, cloned);
     try expectEqualSerializedAlloc(Bits, allocator, b, cloned);
 }
+
+test "resize" {
+    const allocator = std.testing.allocator;
+
+    const Bits = BitListType(16);
+    // First byte: 1, 0, 1, 1, 0, 1, 0, 1 = 173
+    // Second byte: 1, 0, 1, 1, 1, 0, 1, 1 = 221
+    const bools = [_]bool{ true, false, true, true, false, true, false, true, true, false, true, true, true, false, true, true };
+    var b: Bits.Type = try Bits.Type.fromBoolSlice(allocator, &bools);
+    defer b.deinit(allocator);
+
+    try std.testing.expect(b.data.items.len == 2);
+    try std.testing.expect(b.data.items[0] == 173);
+    try std.testing.expect(b.data.items[1] == 221);
+
+    // Resize to 5 bits. Now it should only have one byte,
+    // with the last 3 bits in the byte being wiped out.
+    // First byte: 1, 0, 1, 1, 0, 0, 0, 0 = 13
+    try b.resize(allocator, 5);
+
+    try std.testing.expect(b.data.items.len == 1);
+    try std.testing.expect(b.data.items[0] == 13);
+}
