@@ -7,7 +7,6 @@ pub const Depth = depth.Depth;
 const sha256 = @import("sha256.zig");
 pub const hash = sha256.hash;
 pub const hashOne = sha256.hashOne;
-pub const hashMulti = sha256.hashMulti;
 
 const zero_hash = @import("zero_hash.zig");
 pub const getZeroHash = zero_hash.getZeroHash;
