@@ -123,7 +123,8 @@ pub const Pool = struct {
     allocator: Allocator,
     nodes: std.MultiArrayList(Node).Slice,
     next_free_node: Id,
-    lazy_nodes_by_level: []std.ArrayList(Id),
+    // this is used only in the batch hash getRoot() function, it's designed to be reused over multiple calls
+    lazy_nodes: std.ArrayList(Id),
 
     pub const free_bit: u32 = 0x80000000;
     pub const max_ref_count: u32 = 0x7FFFFFFF;
@@ -134,7 +135,7 @@ pub const Pool = struct {
             .allocator = allocator,
             .nodes = undefined,
             .next_free_node = @enumFromInt(max_depth),
-            .lazy_nodes_by_level = try allocator.alloc(std.ArrayList(Id), max_depth),
+            .lazy_nodes = std.ArrayList(Id).init(allocator),
         };
 
         if (pool_size + max_depth >= free_bit) {
@@ -159,21 +160,12 @@ pub const Pool = struct {
 
         try pool.preheat(pool_size);
 
-        for (0..max_depth) |i| {
-            // pool.lazy_nodes_by_level[i] = std.ArrayList(Id).init(allocator);
-            // TODO
-            pool.lazy_nodes_by_level[i] = try std.ArrayList(Id).initCapacity(allocator, 10_000);
-        }
-
         return pool;
     }
 
     pub fn deinit(self: *Pool) void {
         self.nodes.deinit(self.allocator);
-        for (self.lazy_nodes_by_level) |list| {
-            list.deinit();
-        }
-        self.allocator.free(self.lazy_nodes_by_level);
+        self.lazy_nodes.deinit();
         self.* = undefined;
     }
 
@@ -396,45 +388,63 @@ pub const Pool = struct {
         // node_id is a lazy branch
         const lefts = self.nodes.items(.left);
         const rights = self.nodes.items(.right);
-        for (self.lazy_nodes_by_level) |*list| {
-            try list.resize(0);
-        }
+        // self.lazy_nodes               |----------|-------------------|
+        //                               ^          ^                   ^
+        // lazy_nodes_start_indices      0          1                  level
+        try self.lazy_nodes.resize(0);
+        var lazy_nodes_start_indices: [max_depth]usize = undefined;
 
-        try self.lazy_nodes_by_level[0].append(node_id);
+        try self.lazy_nodes.append(node_id);
+        lazy_nodes_start_indices[0] = 0;
         var level: Depth = 0;
         // this will always terminate because the last level is all leaf nodes
-        while (self.lazy_nodes_by_level[level].items.len > 0 and level < max_depth) {
-            const next_level_nodes = &self.lazy_nodes_by_level[level + 1];
-            for (self.lazy_nodes_by_level[level].items) |id| {
+        while (level < max_depth) {
+            const last_level_index: usize = lazy_nodes_start_indices[level];
+            const next_level_start_index: usize = self.lazy_nodes.items.len;
+            var has_lazy = false;
+            var index = last_level_index;
+            // should not access self.lazy_nodes and loop here because self.lazy_nodes may reallocate
+            while (index < next_level_start_index) : (index += 1) {
+                const id = self.lazy_nodes.items[index];
                 const left = lefts[@intFromEnum(id)];
                 const right = rights[@intFromEnum(id)];
                 if (states[@intFromEnum(left)].isBranchLazy()) {
-                    try next_level_nodes.append(left);
+                    has_lazy = true;
+                    try self.lazy_nodes.append(left);
                 }
                 if (states[@intFromEnum(right)].isBranchLazy()) {
-                    try next_level_nodes.append(right);
+                    has_lazy = true;
+                    try self.lazy_nodes.append(right);
                 }
             }
+            if (!has_lazy) break;
             level += 1;
+            lazy_nodes_start_indices[level] = next_level_start_index;
         }
 
         // batch hash bottom-up
-        level = level - 1;
+        const last_level = level;
         // best SIMD implementation is 512bits = 64 bytes
         // given sha256 operates on a block of 4 bytes, we can hash 16 inputs at a time
         const batch_size = 16;
         var in_buf: [batch_size * 2][32]u8 = undefined;
         var out_buf: [batch_size][32]u8 = undefined;
         while (level >= 0) {
-            var level_nodes = self.lazy_nodes_by_level[level];
+            const cur_level_index: usize = lazy_nodes_start_indices[level];
+            const next_level_index: usize = if (level == last_level) self.lazy_nodes.items.len else lazy_nodes_start_indices[level + 1];
+            var level_nodes = self.lazy_nodes.items[cur_level_index..next_level_index];
             var offset: usize = 0;
-            while (offset < level_nodes.items.len) {
-                const batch_end = @min(offset + batch_size, level_nodes.items.len);
+            while (offset < level_nodes.len) {
+                const batch_end = @min(offset + batch_size, level_nodes.len);
 
                 // populate in_buf
-                for (level_nodes.items[offset..batch_end], 0..) |id, i| {
+                for (level_nodes[offset..batch_end], 0..) |id, i| {
                     const left = lefts[@intFromEnum(id)];
                     const right = rights[@intFromEnum(id)];
+
+                    if (states[@intFromEnum(left)].isBranchLazy() or states[@intFromEnum(right)].isBranchLazy()) {
+                        return error.InvalidComputation;
+                    }
 
                     in_buf[2 * i] = hashes[@intFromEnum(left)];
                     in_buf[2 * i + 1] = hashes[@intFromEnum(right)];
@@ -444,19 +454,18 @@ pub const Pool = struct {
                 try hashFn(out_buf[0 .. batch_end - offset], in_buf[0 .. 2 * (batch_end - offset)]);
 
                 // populate hashes
-                for (level_nodes.items[offset..batch_end], 0..) |id, i| {
+                for (level_nodes[offset..batch_end], 0..) |id, i| {
                     hashes[@intFromEnum(id)] = out_buf[i];
                     states[@intFromEnum(id)].setBranchComputed();
                 }
                 offset = batch_end;
             } // done for all nodes of this level
 
-            // clean up, move to the next level
-            try level_nodes.resize(0);
-
             if (level == 0) break;
             level -= 1;
         } // done for all levels
+
+        try self.lazy_nodes.resize(0);
 
         if (!states[@intFromEnum(node_id)].isBranchComputed()) {
             return error.InvalidComputation;
