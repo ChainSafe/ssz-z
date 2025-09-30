@@ -1,3 +1,4 @@
+const std = @import("std");
 const depth = @import("depth.zig");
 pub const GindexUint = depth.GindexUint;
 pub const max_depth = depth.max_depth;
@@ -14,3 +15,7 @@ const merkleize_ = @import("merkleize.zig");
 pub const merkleize = merkleize_.merkleize;
 pub const mixInLength = merkleize_.mixInLength;
 pub const maxChunksToDepth = merkleize_.maxChunksToDepth;
+
+test {
+    std.testing.refAllDeclsRecursive(@This());
+}

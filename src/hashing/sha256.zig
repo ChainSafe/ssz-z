@@ -37,3 +37,4 @@ test hashOne {
     try std.testing.expectEqualSlices(u8, &out2, &out[0]);
     try std.testing.expectEqualSlices(u8, &out2, &out[1]);
 }
+
