@@ -246,7 +246,7 @@ pub const Pool = struct {
     /// Note: Only the first node (`out[0]`) is pre-refed.
     ///
     /// Nodes allocated here are expected to be attached via `rebind`
-    /// Return true if pool has to allocate more memory, false otherwise
+    /// Return true if pool had to allocate more memory, false otherwise
     pub fn alloc(self: *Pool, out: []Id) Allocator.Error!bool {
         var states = self.nodes.items(.state);
         var allocated: bool = false;
