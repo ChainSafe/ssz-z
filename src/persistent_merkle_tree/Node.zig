@@ -205,6 +205,18 @@ pub const Pool = struct {
         return self.createUnsafe(self.nodes.items(.state));
     }
 
+    /// Returns the number of nodes currently in use (not free)
+    pub fn getNodesInUse(self: *Pool) usize {
+        var count: usize = 0;
+        const states = self.nodes.items(.state);
+        for (states) |state| {
+            if (!state.isFree()) {
+                count += 1;
+            }
+        }
+        return count;
+    }
+
     pub fn createLeaf(self: *Pool, hash: *const [32]u8, should_ref: bool) Allocator.Error!Id {
         const node_id = try self.create();
 
@@ -605,17 +617,27 @@ pub const Id = enum(u32) {
         const path_len = base_gindex.pathLen();
 
         var path_parents_buf: [max_depth]Id = undefined;
+        // at each level, there is at most 1 unfinalized parent per traversal
+        // "unfinalized" means it may or may not be part of the new tree
+        var unfinalized_parents_buf: [max_depth]?Id = undefined;
         var path_lefts_buf: [max_depth]Id = undefined;
         var path_rights_buf: [max_depth]Id = undefined;
+        // right_move means it's part of the new tree, it happens when we traverse right
+        var right_move: [max_depth]bool = undefined;
 
         const path_parents = path_parents_buf[0..path_len];
         const path_lefts = path_lefts_buf[0..path_len];
         const path_rights = path_rights_buf[0..path_len];
 
-        // TODO how to handle failing to resize here, especially after several allocs
-        errdefer pool.free(path_parents);
-
         var node_id = root_node;
+        errdefer {
+            // at any points, node_id is the root of the in-progress new tree
+            if (node_id != root_node) pool.unref(node_id);
+            // orphaned nodes were unrefed along the way through unfinalized_parents_buf
+            // path_parents may or maynot be part of the in-progress new tree, there is no issue to double unref()
+            pool.free(path_parents);
+        }
+
         // The shared depth between the previous and current index
         // This is initialized as 0 since the first index has no previous index
         var d_offset: Depth = 0;
@@ -653,13 +675,24 @@ pub const Id = enum(u32) {
                 for (next_d_offset..d_offset) |bit_i| {
                     if (path.left()) {
                         path_lefts[bit_i] = path_parents[bit_i + 1];
+                        right_move[bit_i] = false;
+                        // move left, unfinalized
+                        unfinalized_parents_buf[bit_i] = path_parents[bit_i];
                     } else {
                         path_rights[bit_i] = path_parents[bit_i + 1];
+                        right_move[bit_i] = true;
                     }
                     path.next();
                 }
             } else {
                 path.nextN(d_offset);
+            }
+
+            // right move at d_offset, make all unfinalized parents at lower levels as finalized
+            if (path.right()) {
+                for (d_offset + 1..path_len) |bit_i| {
+                    unfinalized_parents_buf[bit_i] = null;
+                }
             }
 
             // Navigate down (from the depth offset) to the current index, populating parents
@@ -672,10 +705,13 @@ pub const Id = enum(u32) {
                     path_lefts[bit_i] = path_parents[bit_i + 1];
                     path_rights[bit_i] = rights[@intFromEnum(node_id)];
                     node_id = lefts[@intFromEnum(node_id)];
+                    right_move[bit_i] = false;
+                    unfinalized_parents_buf[bit_i] = path_parents[bit_i];
                 } else {
                     path_lefts[bit_i] = lefts[@intFromEnum(node_id)];
                     path_rights[bit_i] = path_parents[bit_i + 1];
                     node_id = rights[@intFromEnum(node_id)];
+                    right_move[bit_i] = true;
                 }
                 path.next();
             }
@@ -686,9 +722,12 @@ pub const Id = enum(u32) {
             if (path.left()) {
                 path_lefts[path_len - 1] = nodes[i];
                 path_rights[path_len - 1] = rights[@intFromEnum(node_id)];
+                right_move[path_len - 1] = false;
+                unfinalized_parents_buf[path_len - 1] = path_parents[path_len - 1];
             } else {
                 path_lefts[path_len - 1] = lefts[@intFromEnum(node_id)];
                 path_rights[path_len - 1] = nodes[i];
+                right_move[path_len - 1] = true;
             }
 
             // Rebind upwards depth diff times
@@ -697,6 +736,15 @@ pub const Id = enum(u32) {
                 path_lefts[next_d_offset..path_len],
                 path_rights[next_d_offset..path_len],
             );
+
+            // unref prev parents if it's not part of the new tree
+            // can only unref after the rebind
+            for (next_d_offset..path_len) |bit_i| {
+                if (right_move[bit_i] and unfinalized_parents_buf[bit_i] != null) {
+                    pool.unref(unfinalized_parents_buf[bit_i].?);
+                    unfinalized_parents_buf[bit_i] = null;
+                }
+            }
             node_id = path_parents[next_d_offset];
             d_offset = next_d_offset;
         }
@@ -717,13 +765,23 @@ pub const Id = enum(u32) {
         const path_len = base_gindex.pathLen();
 
         var path_parents_buf: [max_depth]Id = undefined;
+        // at each level, there is at most 1 unfinalized parent per traversal
+        // "unfinalized" means it may or may not be part of the new tree
+        var unfinalized_parents_buf: [max_depth]?Id = undefined;
         var path_lefts_buf: [max_depth]Id = undefined;
         var path_rights_buf: [max_depth]Id = undefined;
-
-        // TODO how to handle failing to resize here, especially after several allocs
-        errdefer pool.free(&path_parents_buf);
+        // right_move means it's part of the new tree, it happens when we traverse right
+        var right_move: [max_depth]bool = undefined;
 
         var node_id = root_node;
+        errdefer {
+            // at any points, node_id is the root of the in-progress new tree
+            if (node_id != root_node) pool.unref(node_id);
+            // orphaned nodes were unrefed along the way through unfinalized_parents_buf
+            // path_parents_buf may or maynot be part of the in-progress new tree, there is no issue to double unref()
+            pool.free(&path_parents_buf);
+        }
+
         // The shared depth between the previous and current index
         // This is initialized as 0 since the first index has no previous index
         var d_offset: Depth = 0;
@@ -761,13 +819,24 @@ pub const Id = enum(u32) {
                 for (next_d_offset..d_offset) |bit_i| {
                     if (path.left()) {
                         path_lefts_buf[bit_i] = path_parents_buf[bit_i + 1];
+                        right_move[bit_i] = false;
+                        // move left, unfinalized
+                        unfinalized_parents_buf[bit_i] = path_parents_buf[bit_i];
                     } else {
                         path_rights_buf[bit_i] = path_parents_buf[bit_i + 1];
+                        right_move[bit_i] = true;
                     }
                     path.next();
                 }
             } else {
                 path.nextN(d_offset);
+            }
+
+            // right move at d_offset, make all unfinalized parents at lower levels as finalized
+            if (path.right()) {
+                for (d_offset + 1..path_len) |bit_i| {
+                    unfinalized_parents_buf[bit_i] = null;
+                }
             }
 
             // Navigate down (from the depth offset) to the current index, populating parents
@@ -780,10 +849,13 @@ pub const Id = enum(u32) {
                     path_lefts_buf[bit_i] = path_parents_buf[bit_i + 1];
                     path_rights_buf[bit_i] = rights[@intFromEnum(node_id)];
                     node_id = lefts[@intFromEnum(node_id)];
+                    right_move[bit_i] = false;
+                    unfinalized_parents_buf[bit_i] = path_parents_buf[bit_i];
                 } else {
                     path_lefts_buf[bit_i] = lefts[@intFromEnum(node_id)];
                     path_rights_buf[bit_i] = path_parents_buf[bit_i + 1];
                     node_id = rights[@intFromEnum(node_id)];
+                    right_move[bit_i] = true;
                 }
                 path.next();
             }
@@ -794,9 +866,12 @@ pub const Id = enum(u32) {
             if (path.left()) {
                 path_lefts_buf[path_len - 1] = nodes[i];
                 path_rights_buf[path_len - 1] = rights[@intFromEnum(node_id)];
+                right_move[path_len - 1] = false;
+                unfinalized_parents_buf[path_len - 1] = path_parents_buf[path_len - 1];
             } else {
                 path_lefts_buf[path_len - 1] = lefts[@intFromEnum(node_id)];
                 path_rights_buf[path_len - 1] = nodes[i];
+                right_move[path_len - 1] = true;
             }
 
             // Rebind upwards depth diff times
@@ -805,6 +880,15 @@ pub const Id = enum(u32) {
                 path_lefts_buf[next_d_offset..path_len],
                 path_rights_buf[next_d_offset..path_len],
             );
+            // unref prev parents if it's not part of the new tree
+            // can only unref after the rebind
+            for (next_d_offset..path_len) |bit_i| {
+                if (right_move[bit_i] and unfinalized_parents_buf[bit_i] != null) {
+                    pool.unref(unfinalized_parents_buf[bit_i].?);
+                    unfinalized_parents_buf[bit_i] = null;
+                }
+            }
+
             node_id = path_parents_buf[next_d_offset];
             d_offset = next_d_offset;
         }
