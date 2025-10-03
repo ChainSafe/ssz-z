@@ -632,7 +632,7 @@ pub const Id = enum(u32) {
         var node_id = root_node;
         errdefer {
             // at any points, node_id is the root of the in-progress new tree
-            pool.unref(node_id);
+            if (node_id != root_node) pool.unref(node_id);
             // orphaned nodes were unrefed along the way through unfinalized_parents_buf
             // path_parents may or maynot be part of the in-progress new tree, there is no issue to double unref()
             pool.free(path_parents);
@@ -776,7 +776,7 @@ pub const Id = enum(u32) {
         var node_id = root_node;
         errdefer {
             // at any points, node_id is the root of the in-progress new tree
-            pool.unref(node_id);
+            if (node_id != root_node) pool.unref(node_id);
             // orphaned nodes were unrefed along the way through unfinalized_parents_buf
             // path_parents_buf may or maynot be part of the in-progress new tree, there is no issue to double unref()
             pool.free(&path_parents_buf);
