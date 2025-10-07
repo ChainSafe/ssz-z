@@ -7,7 +7,7 @@
     .minimum_zig_version = "0.14.0",
     .dependencies = .{
         .hashtree = .{
-            .url = "git+https://github.com/chainsafe/hashtree-z#43a58b0fd4813515cda3d0ffc622125243a01c54",
+            .url = "git+https://github.com/chainsafe/hashtree-z#644dcc72d794cd6a9148abfc9575dbe3bc260ed6",
             .hash = "hashtree-0.1.0-sBOovrYSAAArAQVa-a6BhOPWPTrgKrJtufxWjQYMNNAN",
         },
         .snappy = .{

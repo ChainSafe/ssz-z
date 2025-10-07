@@ -10,7 +10,7 @@
     },
     .dependencies = .{
         .hashtree = .{
-            .url = "git+https://github.com/chainsafe/hashtree-z#43a58b0fd4813515cda3d0ffc622125243a01c54",
+            .url = "git+https://github.com/chainsafe/hashtree-z#644dcc72d794cd6a9148abfc9575dbe3bc260ed6",
         },
         .snappy = .{
             .url = "git+https://github.com/chainsafe/snappy.zig#ede2ad602ac9ffa506e3724a2bf5fc14c806187f",
