@@ -272,6 +272,8 @@ const test_cases = [_]TestCase{
     createTestCase(4, [_]usize{ 16, 20 }, null),
     createTestCase(4, [_]usize{ 16, 20, 30 }, null),
     createTestCase(4, [_]usize{ 16, 20, 30, 31 }, null),
+    // 2 nodes next to each other at depth 4 but not sharing the same parent
+    createTestCase(4, [_]usize{ 17, 18, 31 }, null),
     // depth 5
     createTestCase(5, [_]usize{33}, null),
     createTestCase(5, [_]usize{ 33, 34 }, null),

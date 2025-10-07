@@ -82,8 +82,16 @@ pub const Gindex = enum(GindexUint) {
             return @intFromEnum(path) & 1 == 0;
         }
 
+        pub inline fn leftN(path: Path, n: Depth) bool {
+            return (@intFromEnum(path) >> n) & 1 == 0;
+        }
+
         pub inline fn right(path: Path) bool {
             return @intFromEnum(path) & 1 == 1;
+        }
+
+        pub inline fn rightN(path: Path, n: Depth) bool {
+            return (@intFromEnum(path) >> n) & 1 == 1;
         }
 
         pub inline fn next(path: *Path) void {
