@@ -18,7 +18,7 @@ pub fn main() !void {
         \\const types = @import("generic_types.zig");
         \\const test_case = @import("test_case.zig");
         \\
-        \\const generic_tests_dir_name = "general/tests/general/phase0/ssz_generic";
+        \\const generic_tests_dir_name = "general/phase0/ssz_generic";
         \\const allocator = std.testing.allocator;
         \\
         \\
@@ -27,8 +27,6 @@ pub fn main() !void {
     const generic_tests_dir_name = try std.fs.path.join(allocator, &[_][]const u8{
         spec_test_options.spec_test_out_dir,
         spec_test_options.spec_test_version,
-        "general",
-        "tests",
         "general",
         "phase0",
         "ssz_generic",
@@ -79,6 +77,7 @@ pub fn main() !void {
 
         const invalid_tests_dir = try std.fs.cwd().openDir(invalid_tests_dir_name, .{ .iterate = true });
         var invalid_tests_dir_it = invalid_tests_dir.iterate();
+
         while (try invalid_tests_dir_it.next()) |invalid_test_entry| {
             switch (invalid_test_entry.kind) {
                 .directory => {},
@@ -89,11 +88,6 @@ pub fn main() !void {
 
             const test_name = invalid_test_entry.name;
             const type_name = getTypeName(test_dir_name, test_name);
-
-            // we must skip some invalid types (that would have gotten caught at compile time)
-            if (std.mem.indexOf(u8, type_name, "vec_") != null and std.mem.indexOf(u8, type_name, "_0") != null) {
-                continue;
-            }
 
             try writeInvalidTest(writer, test_name, test_dir_name, type_name);
         }
@@ -109,9 +103,27 @@ fn getTypeName(test_dir_name: []const u8, test_name: []const u8) []const u8 {
         _ = split_it.next();
         _ = split_it.next();
         return test_name[0 .. (split_it.index orelse (split_it.buffer.len + 1)) - 1];
+    } else if (std.mem.eql(u8, test_dir_name, "basic_progressive_list")) {
+        // Include the limit in the mapped type name, e.g. proglist_uint32_20
+        var split_it = std.mem.splitScalar(u8, test_name, '_');
+        _ = split_it.next(); // proglist
+        _ = split_it.next(); // uintXX
+        _ = split_it.next(); // limit
+        return test_name[0 .. (split_it.index orelse (split_it.buffer.len + 1)) - 1];
     } else if (std.mem.eql(u8, test_dir_name, "containers")) {
         var split_it = std.mem.splitScalar(u8, test_name, '_');
         return split_it.first();
+    } else if (std.mem.eql(u8, test_dir_name, "progressive_containers")) {
+        // Progressive container test names have the pattern: TypeName_variant_number or TypeName_variant_chaos_number
+        // We need to extract just the TypeName, which ends with "TestStruct" or "Struct"
+        // e.g., "ProgressiveSingleFieldContainerTestStruct_max" -> "ProgressiveSingleFieldContainerTestStruct"
+        // e.g., "ProgressiveSingleListContainerTestStruct_nil_9" -> "ProgressiveSingleListContainerTestStruct"
+        if (std.mem.indexOf(u8, test_name, "TestStruct")) |idx| {
+            return test_name[0 .. idx + "TestStruct".len];
+        } else if (std.mem.indexOf(u8, test_name, "Struct")) |idx| {
+            return test_name[0 .. idx + "Struct".len];
+        }
+        return test_name;
     } else {
         var split_it = std.mem.splitScalar(u8, test_name, '_');
         _ = split_it.next();
