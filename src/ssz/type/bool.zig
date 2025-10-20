@@ -82,7 +82,7 @@ pub fn BoolType() type {
                 var new_leaf: [32]u8 = hash.*;
                 const offset = index % 32;
                 new_leaf[offset] = if (value.*) 1 else 0;
-                return try pool.createLeaf(new_leaf, false);
+                return try pool.createLeaf(&new_leaf, false);
             }
         };
 

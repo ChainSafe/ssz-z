@@ -145,7 +145,7 @@ pub fn TreeView(comptime ST: type) type {
                 const child_data = try self.getChildData(child_gindex);
 
                 // TODO only update changed if the subview is mutable
-                self.data.changed.put(child_gindex, void);
+                try self.data.changed.put(child_gindex, {});
 
                 return TreeView(ST.Element){
                     .allocator = self.allocator,
@@ -164,7 +164,7 @@ pub fn TreeView(comptime ST: type) type {
                 @compileError("setElement can only be used with vector or list types");
             }
             const child_gindex = Gindex.fromDepth(ST.chunk_depth, index);
-            try self.data.changed.put(child_gindex, void);
+            try self.data.changed.put(child_gindex, {});
             if (comptime isBasicType(ST.Element)) {
                 const child_node = try self.getChildNode(child_gindex);
                 try self.data.children_nodes.put(
