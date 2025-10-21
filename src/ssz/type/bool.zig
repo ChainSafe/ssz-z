@@ -96,7 +96,7 @@ pub fn BoolType() type {
                     new_leaf[byte_index] &= ~mask;
                 }
 
-                return try pool.createLeaf(new_leaf, false);
+                return try pool.createLeaf(&new_leaf, false);
             }
         };
 
