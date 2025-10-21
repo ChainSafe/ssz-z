@@ -78,15 +78,29 @@ pub fn TreeView(comptime ST: type) type {
         allocator: std.mem.Allocator,
         pool: *Node.Pool,
         data: Data,
+        parent_change: ?ParentChange = null,
         pub const SszType: type = ST;
 
         const Self = @This();
+
+        const ParentChange = struct {
+            map: *std.AutoArrayHashMap(Gindex, void), // Parent's data.changed
+            gindex: Gindex, // gindex of current node . If current is changed, this will be inserted to parent's data.changed
+        };
+
+        inline fn markChildChanged(self: *Self, gindex: Gindex) !void {
+            try self.data.changed.put(gindex, {});
+            if (self.parent_change) |parent_change| {
+                try parent_change.map.put(parent_change.gindex, {});
+            }
+        }
 
         pub fn init(allocator: std.mem.Allocator, pool: *Node.Pool, root: Node.Id) !Self {
             return Self{
                 .allocator = allocator,
                 .pool = pool,
                 .data = try Data.init(allocator, pool, root),
+                .parent_change = null,
             };
         }
 
@@ -144,19 +158,20 @@ pub fn TreeView(comptime ST: type) type {
             } else {
                 const child_data = try self.getChildData(child_gindex);
 
-                // TODO only update changed if the subview is mutable
-                self.data.changed.put(child_gindex, void);
-
                 return TreeView(ST.Element){
                     .allocator = self.allocator,
                     .pool = self.pool,
                     .data = child_data,
+                    .parent_change = .{
+                        .map = &self.data.changed,
+                        .gindex = child_gindex,
+                    },
                 };
             }
         }
 
         /// Set an element by index. If the element is a basic type, pass the value directly.
-        /// If the element is a complex type, pass a TreeView of the corresponding type.
+        /// If the element is a composite type, pass a TreeView of the corresponding type.
         /// The caller transfers ownership of the `value` TreeView to this parent view.
         /// The existing TreeView, if any, will be deinited by this function.
         pub fn setElement(self: *Self, index: usize, value: Element) !void {
@@ -164,7 +179,7 @@ pub fn TreeView(comptime ST: type) type {
                 @compileError("setElement can only be used with vector or list types");
             }
             const child_gindex = Gindex.fromDepth(ST.chunk_depth, index);
-            try self.data.changed.put(child_gindex, void);
+            try self.markChildChanged(child_gindex);
             if (comptime isBasicType(ST.Element)) {
                 const child_node = try self.getChildNode(child_gindex);
                 try self.data.children_nodes.put(
@@ -214,19 +229,20 @@ pub fn TreeView(comptime ST: type) type {
             } else {
                 const child_data = try self.getChildData(child_gindex);
 
-                // TODO only update changed if the subview is mutable
-                try self.data.changed.put(child_gindex, {});
-
                 return TreeView(ChildST){
                     .allocator = self.allocator,
                     .pool = self.pool,
                     .data = child_data,
+                    .parent_change = .{
+                        .map = &self.data.changed,
+                        .gindex = child_gindex,
+                    },
                 };
             }
         }
 
         /// Set a field by name. If the field is a basic type, pass the value directly.
-        /// If the field is a complex type, pass a TreeView of the corresponding type.
+        /// If the field is a composite type, pass a TreeView of the corresponding type.
         /// The caller transfers ownership of the `value` TreeView to this parent view.
         /// The existing TreeView, if any, will be deinited by this function.
         pub fn setField(self: *Self, comptime field_name: []const u8, value: Field(field_name)) !void {
@@ -236,7 +252,7 @@ pub fn TreeView(comptime ST: type) type {
             const field_index = comptime ST.getFieldIndex(field_name);
             const ChildST = ST.getFieldType(field_name);
             const child_gindex = Gindex.fromDepth(ST.chunk_depth, field_index);
-            try self.data.changed.put(child_gindex, {});
+            try self.markChildChanged(child_gindex);
             if (comptime isBasicType(ChildST)) {
                 const opt_old_node = try self.data.children_nodes.fetchPut(
                     child_gindex,
