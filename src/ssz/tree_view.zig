@@ -82,6 +82,32 @@ pub fn TreeView(comptime ST: type) type {
 
         const Self = @This();
 
+        inline fn elementsPerChunk() usize {
+            return switch (ST.Element.kind) {
+                .bool => 256,
+                .uint => 32 / ST.Element.fixed_size,
+                else => 1,
+            };
+        }
+
+        // Get chunk index given element index
+        // eg. bit vector index = 600 yields 2 because 600th bit is in 2nd chunk because each chunk holds 256 bits
+        inline fn chunkIndex(index: usize) usize {
+            if (ST.kind != .vector and ST.kind != .list) {
+                @compileError("chunkIndex is only available for vector or list types");
+            }
+            return if (comptime isBasicType(ST.element)) index / elementsPerChunk() else index;
+        }
+
+        // Given element index, return index within the chunk
+        // eg. bit vector index = 600 yields 88 because 600th bit is the 88th bit in 2nd chunk
+        inline fn elementOffset(index: usize) usize {
+            if (ST.kind != .vector and ST.kind != .list) {
+                @compileError("elementOffset is only available for vector or list types");
+            }
+            return if (comptime isBasicType(ST.Element)) index % elementsPerChunk() else index;
+        }
+
         pub fn init(allocator: std.mem.Allocator, pool: *Node.Pool, root: Node.Id) !Self {
             return Self{
                 .allocator = allocator,
@@ -135,11 +161,11 @@ pub fn TreeView(comptime ST: type) type {
             if (ST.kind != .vector and ST.kind != .list) {
                 @compileError("getElement can only be used with vector or list types");
             }
-            const child_gindex = Gindex.fromDepth(ST.chunk_depth, index);
+            const child_gindex = Gindex.fromDepth(ST.chunk_depth, chunkIndex(index));
             if (comptime isBasicType(ST.Element)) {
                 var value: ST.Element.Type = undefined;
                 const child_node = try self.getChildNode(child_gindex);
-                try ST.Element.tree.toValue(child_node, self.pool, &value);
+                try ST.Element.tree.toValuePacked(child_node, self.pool, elementOffset(index), &value);
                 return value;
             } else {
                 const child_data = try self.getChildData(child_gindex);
@@ -163,7 +189,7 @@ pub fn TreeView(comptime ST: type) type {
             if (ST.kind != .vector and ST.kind != .list) {
                 @compileError("setElement can only be used with vector or list types");
             }
-            const child_gindex = Gindex.fromDepth(ST.chunk_depth, index);
+            const child_gindex = Gindex.fromDepth(ST.chunk_depth, chunkIndex(index));
             try self.data.changed.put(child_gindex, void);
             if (comptime isBasicType(ST.Element)) {
                 const child_node = try self.getChildNode(child_gindex);
@@ -172,7 +198,7 @@ pub fn TreeView(comptime ST: type) type {
                     try ST.Element.tree.fromValuePacked(
                         child_node,
                         self.pool,
-                        index,
+                        elementOffset(index),
                         &value,
                     ),
                 );
