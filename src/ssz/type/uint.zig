@@ -82,7 +82,8 @@ pub fn UintType(comptime bits: comptime_int) type {
             pub fn fromValuePacked(node: Node.Id, pool: *Node.Pool, index: usize, value: *const Type) !Node.Id {
                 const hash = node.getRoot(pool);
                 var new_leaf: [32]u8 = hash.*;
-                const offset = index % (32 / bytes);
+                const items_per_chunk = 32 / bytes;
+                const offset = (index % items_per_chunk) * bytes;
                 std.mem.writeInt(Type, new_leaf[offset..][0..bytes], value.*, .little);
                 return try pool.createLeaf(&new_leaf, false);
             }

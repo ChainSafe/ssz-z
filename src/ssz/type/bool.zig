@@ -73,29 +73,15 @@ pub fn BoolType() type {
 
             pub fn toValuePacked(node: Node.Id, pool: *Node.Pool, index: usize, out: *Type) !void {
                 const hash = node.getRoot(pool);
-                const offset = index % 256;
-                const byte_index = offset / 8;
-                const bit_index = offset % 8;
-                const mask: u8 = @as(u8, 1) << bit_index;
-
-                out.* = (hash[byte_index] & mask) != 0;
+                const offset = index % 32;
+                out.* = if (hash[offset] == 0) false else true;
             }
 
             pub fn fromValuePacked(node: Node.Id, pool: *Node.Pool, index: usize, value: *const Type) !Node.Id {
                 const hash = node.getRoot(pool);
                 var new_leaf: [32]u8 = hash.*;
-
-                const offset = index % 256;
-                const byte_index = offset / 8;
-                const bit_index = offset % 8;
-                const mask: u8 = @as(u8, 1) << bit_index;
-
-                if (value.*) {
-                    new_leaf[byte_index] |= mask;
-                } else {
-                    new_leaf[byte_index] &= ~mask;
-                }
-
+                const offset = index % 32;
+                new_leaf[offset] = if (value.*) 1 else 0;
                 return try pool.createLeaf(&new_leaf, false);
             }
         };

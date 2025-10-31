@@ -62,3 +62,86 @@ test "TreeView" {
         &htr_from_tree,
     );
 }
+
+test "TreeView vector of basics" {
+    const Node = @import("persistent_merkle_tree").Node;
+    var pool = try Node.Pool.init(std.testing.allocator, 1000);
+    defer pool.deinit();
+
+    const Uint64 = ssz.UintType(64);
+    const Vector = ssz.FixedVectorType(Uint64, 6);
+
+    var initial: Vector.Type = [_]u64{ 10, 20, 30, 40, 50, 60 };
+    const root_node = try Vector.tree.fromValue(&pool, &initial);
+
+    var vec_view = try ssz.TreeView(Vector).init(std.testing.allocator, &pool, root_node);
+    defer vec_view.deinit();
+
+    try std.testing.expectEqual(@as(u64, 10), try vec_view.getElement(0));
+    try std.testing.expectEqual(@as(u64, 60), try vec_view.getElement(5));
+
+    try vec_view.setElement(2, 333);
+    try vec_view.setElement(5, 999);
+
+    try std.testing.expectEqual(@as(u64, 333), try vec_view.getElement(2));
+    try std.testing.expectEqual(@as(u64, 999), try vec_view.getElement(5));
+
+    try vec_view.commit();
+
+    var expected: Vector.Type = initial;
+    expected[2] = 333;
+    expected[5] = 999;
+
+    var expected_root: [32]u8 = undefined;
+    try Vector.hashTreeRoot(&expected, &expected_root);
+
+    var view_root: [32]u8 = undefined;
+    try vec_view.hashTreeRoot(&view_root);
+
+    try std.testing.expectEqualSlices(u8, &expected_root, &view_root);
+}
+
+test "TreeView vector of bool basics" {
+    const Node = @import("persistent_merkle_tree").Node;
+    var pool = try Node.Pool.init(std.testing.allocator, 1000);
+    defer pool.deinit();
+
+    const Bool = ssz.BoolType();
+    const Vector = ssz.FixedVectorType(Bool, 40);
+
+    var initial: Vector.Type = [_]bool{false} ** 40;
+    initial[1] = true;
+    initial[5] = true;
+    initial[33] = true;
+    const root_node = try Vector.tree.fromValue(&pool, &initial);
+
+    var vec_view = try ssz.TreeView(Vector).init(std.testing.allocator, &pool, root_node);
+    defer vec_view.deinit();
+
+    try std.testing.expectEqual(false, try vec_view.getElement(0));
+    try std.testing.expectEqual(true, try vec_view.getElement(1));
+    try std.testing.expectEqual(true, try vec_view.getElement(33));
+
+    try vec_view.setElement(0, true);
+    try vec_view.setElement(33, false);
+    try vec_view.setElement(35, true);
+
+    try std.testing.expectEqual(true, try vec_view.getElement(0));
+    try std.testing.expectEqual(false, try vec_view.getElement(33));
+    try std.testing.expectEqual(true, try vec_view.getElement(35));
+
+    try vec_view.commit();
+
+    var expected: Vector.Type = initial;
+    expected[0] = true;
+    expected[33] = false;
+    expected[35] = true;
+
+    var expected_root: [32]u8 = undefined;
+    try Vector.hashTreeRoot(&expected, &expected_root);
+
+    var view_root: [32]u8 = undefined;
+    try vec_view.hashTreeRoot(&view_root);
+
+    try std.testing.expectEqualSlices(u8, &expected_root, &view_root);
+}

@@ -84,8 +84,7 @@ pub fn TreeView(comptime ST: type) type {
 
         inline fn elementsPerChunk() usize {
             return switch (ST.Element.kind) {
-                .bool => 256,
-                .uint => 32 / ST.Element.fixed_size,
+                .bool, .uint => 32 / ST.Element.fixed_size,
                 else => 1,
             };
         }
@@ -96,7 +95,7 @@ pub fn TreeView(comptime ST: type) type {
             if (ST.kind != .vector and ST.kind != .list) {
                 @compileError("chunkIndex is only available for vector or list types");
             }
-            return if (comptime isBasicType(ST.element)) index / elementsPerChunk() else index;
+            return if (comptime isBasicType(ST.Element)) index / elementsPerChunk() else index;
         }
 
         // Given element index, return index within the chunk
@@ -157,7 +156,7 @@ pub fn TreeView(comptime ST: type) type {
 
         /// Get an element by index. If the element is a basic type, returns the value directly.
         /// Caller borrows a copy of the value so there is no need to deinit it.
-        pub fn getElement(self: *Self, index: usize) Element {
+        pub fn getElement(self: *Self, index: usize) !Element {
             if (ST.kind != .vector and ST.kind != .list) {
                 @compileError("getElement can only be used with vector or list types");
             }
@@ -171,7 +170,7 @@ pub fn TreeView(comptime ST: type) type {
                 const child_data = try self.getChildData(child_gindex);
 
                 // TODO only update changed if the subview is mutable
-                self.data.changed.put(child_gindex, void);
+                try self.data.changed.put(child_gindex, {});
 
                 return TreeView(ST.Element){
                     .allocator = self.allocator,
@@ -190,7 +189,7 @@ pub fn TreeView(comptime ST: type) type {
                 @compileError("setElement can only be used with vector or list types");
             }
             const child_gindex = Gindex.fromDepth(ST.chunk_depth, chunkIndex(index));
-            try self.data.changed.put(child_gindex, void);
+            try self.data.changed.put(child_gindex, {});
             if (comptime isBasicType(ST.Element)) {
                 const child_node = try self.getChildNode(child_gindex);
                 try self.data.children_nodes.put(
