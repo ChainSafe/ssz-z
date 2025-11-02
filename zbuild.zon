@@ -34,11 +34,11 @@
         },
         .spec_test_options = .{
             .spec_test_url = .{
-                .default = "https://github.com/ethereum/consensus-spec-tests",
+                .default = "https://github.com/ethereum/consensus-specs",
                 .type = "string",
             },
             .spec_test_version = .{
-                .default = "v1.6.0-alpha.4",
+                .default = "v1.6.0",
                 .type = "string",
             },
             .spec_test_out_dir = .{
