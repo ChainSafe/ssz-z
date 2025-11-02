@@ -205,6 +205,18 @@ pub const Pool = struct {
         return self.createUnsafe(self.nodes.items(.state));
     }
 
+    /// Returns the number of nodes currently in use (not free)
+    pub fn getNodesInUse(self: *Pool) usize {
+        var count: usize = 0;
+        const states = self.nodes.items(.state);
+        for (states) |state| {
+            if (!state.isFree()) {
+                count += 1;
+            }
+        }
+        return count;
+    }
+
     pub fn createLeaf(self: *Pool, hash: *const [32]u8, should_ref: bool) Allocator.Error!Id {
         const node_id = try self.create();
 
@@ -246,8 +258,10 @@ pub const Pool = struct {
     /// Note: Only the first node (`out[0]`) is pre-refed.
     ///
     /// Nodes allocated here are expected to be attached via `rebind`
-    pub fn alloc(self: *Pool, out: []Id) Allocator.Error!void {
+    /// Return true if pool had to allocate more memory, false otherwise
+    pub fn alloc(self: *Pool, out: []Id) Allocator.Error!bool {
         var states = self.nodes.items(.state);
+        var allocated: bool = false;
         for (0..out.len) |i| {
             std.debug.assert(@intFromEnum(self.next_free_node) <= self.nodes.len);
             if (@intFromEnum(self.next_free_node) == self.nodes.len) {
@@ -257,10 +271,12 @@ pub const Pool = struct {
                 // errdefer self.free(out[0..i]);
 
                 states = self.nodes.items(.state);
+                allocated = true;
             }
             out[i] = self.createUnsafe(states);
             states[@intFromEnum(out[i])] = State.branch_lazy.initRefCount(i == 0);
         }
+        return allocated;
     }
 
     /// Unrefs nodes from the pool.
@@ -466,7 +482,7 @@ pub const Id = enum(u32) {
         const path_rights = path_rights_buf[0..path_len];
         const path_parents = path_parents_buf[0..path_len];
 
-        try pool.alloc(path_parents);
+        _ = try pool.alloc(path_parents);
         errdefer pool.free(path_parents);
 
         const states = pool.nodes.items(.state);
@@ -601,43 +617,82 @@ pub const Id = enum(u32) {
         const path_len = base_gindex.pathLen();
 
         var path_parents_buf: [max_depth]Id = undefined;
+        // at each level, there is at most 1 unfinalized parent per traversal
+        // "unfinalized" means it may or may not be part of the new tree
+        var unfinalized_parents_buf: [max_depth]?Id = undefined;
         var path_lefts_buf: [max_depth]Id = undefined;
         var path_rights_buf: [max_depth]Id = undefined;
+        // right_move means it's part of the new tree, it happens when we traverse right
+        var right_move: [max_depth]bool = undefined;
 
         const path_parents = path_parents_buf[0..path_len];
         const path_lefts = path_lefts_buf[0..path_len];
         const path_rights = path_rights_buf[0..path_len];
 
-        // TODO how to handle failing to resize here, especially after several allocs
-        errdefer pool.free(path_parents);
-
         var node_id = root_node;
-        // The depth offset to start from, going from the current index to the next
-        // This is the offset of the first shared depth between the two indices
-        var d_offset: Depth = 0; // path_len - depth;
+        errdefer {
+            // at any points, node_id is the root of the in-progress new tree
+            if (node_id != root_node) pool.unref(node_id);
+            // orphaned nodes were unrefed along the way through unfinalized_parents_buf
+            // path_parents may or maynot be part of the in-progress new tree, there is no issue to double unref()
+            pool.free(path_parents);
+        }
 
-        const states = pool.nodes.items(.state);
-        const lefts = pool.nodes.items(.left);
-        const rights = pool.nodes.items(.right);
+        // The shared depth between the previous and current index
+        // This is initialized as 0 since the first index has no previous index
+        var d_offset: Depth = 0;
 
-        // For each index specified
+        var states = pool.nodes.items(.state);
+        var lefts = pool.nodes.items(.left);
+        var rights = pool.nodes.items(.right);
+
+        // For each index specified, maintain/update path_lefts and path_rights from root (depth 0) all the way to path_len
+        // but only allocate and update path_parents from the next shared depth to path_len
         for (0..indices.len) |i| {
             // Calculate the gindex bits for the current index
             const index = indices[i];
             const gindex: Gindex = @enumFromInt(@as(Gindex.Uint, @intCast(@intFromEnum(base_gindex) | index)));
 
-            try pool.alloc(path_parents[d_offset..path_len]);
+            // Calculate the depth offset to navigate from current index to the next
+            const next_d_offset = if (i == indices.len - 1)
+                // 0 because there is no next index, it also means node_id is now the new root
+                0
+            else
+                path_len - @as(Depth, @intCast(@bitSizeOf(usize) - @clz(index ^ indices[i + 1])));
+            if (try pool.alloc(path_parents[next_d_offset..path_len])) {
+                states = pool.nodes.items(.state);
+                lefts = pool.nodes.items(.left);
+                rights = pool.nodes.items(.right);
+            }
 
             var path = gindex.toPath();
 
             // Navigate down (to the depth offset), attaching any new updates
-            for (0..d_offset) |bit_i| {
-                if (path.left()) {
-                    path_lefts[bit_i] = path_parents[bit_i + 1];
-                } else {
-                    path_rights[bit_i] = path_parents[bit_i + 1];
+            // d_offset is the shared depth between the previous and current index so we can reuse path_lefts and path_rights up that point
+            // but update them to the path_parents to rebind starting from next_d_offset if needed
+            if (d_offset > next_d_offset) {
+                path.nextN(next_d_offset);
+                for (next_d_offset..d_offset) |bit_i| {
+                    if (path.left()) {
+                        path_lefts[bit_i] = path_parents[bit_i + 1];
+                        right_move[bit_i] = false;
+                        // move left, unfinalized
+                        unfinalized_parents_buf[bit_i] = path_parents[bit_i];
+                    } else {
+                        path_rights[bit_i] = path_parents[bit_i + 1];
+                        right_move[bit_i] = true;
+                    }
+                    path.next();
                 }
-                path.next();
+            } else {
+                path.nextN(d_offset);
+            }
+
+            // right move at d_offset, make all unfinalized parents at lower levels as finalized
+            if (path.right()) {
+                for (d_offset + 1..path_len) |bit_i| {
+                    unfinalized_parents_buf[bit_i] = null;
+                }
             }
 
             // Navigate down (from the depth offset) to the current index, populating parents
@@ -650,10 +705,13 @@ pub const Id = enum(u32) {
                     path_lefts[bit_i] = path_parents[bit_i + 1];
                     path_rights[bit_i] = rights[@intFromEnum(node_id)];
                     node_id = lefts[@intFromEnum(node_id)];
+                    right_move[bit_i] = false;
+                    unfinalized_parents_buf[bit_i] = path_parents[bit_i];
                 } else {
                     path_lefts[bit_i] = lefts[@intFromEnum(node_id)];
                     path_rights[bit_i] = path_parents[bit_i + 1];
                     node_id = rights[@intFromEnum(node_id)];
+                    right_move[bit_i] = true;
                 }
                 path.next();
             }
@@ -664,28 +722,36 @@ pub const Id = enum(u32) {
             if (path.left()) {
                 path_lefts[path_len - 1] = nodes[i];
                 path_rights[path_len - 1] = rights[@intFromEnum(node_id)];
+                right_move[path_len - 1] = false;
+                unfinalized_parents_buf[path_len - 1] = path_parents[path_len - 1];
             } else {
                 path_lefts[path_len - 1] = lefts[@intFromEnum(node_id)];
                 path_rights[path_len - 1] = nodes[i];
+                right_move[path_len - 1] = true;
             }
-
-            // Calculate the depth offset to navigate from current index to the next
-            d_offset = if (i == indices.len - 1)
-                path_len - depth
-            else
-                path_len - @as(Depth, @intCast(@bitSizeOf(usize) - @clz(index ^ indices[i + 1])));
 
             // Rebind upwards depth diff times
             try pool.rebind(
-                path_parents[d_offset..path_len],
-                path_lefts[d_offset..path_len],
-                path_rights[d_offset..path_len],
+                path_parents[next_d_offset..path_len],
+                path_lefts[next_d_offset..path_len],
+                path_rights[next_d_offset..path_len],
             );
-            node_id = path_parents[d_offset];
+
+            // unref prev parents if it's not part of the new tree
+            // can only unref after the rebind
+            for (next_d_offset..path_len) |bit_i| {
+                if (right_move[bit_i] and unfinalized_parents_buf[bit_i] != null) {
+                    pool.unref(unfinalized_parents_buf[bit_i].?);
+                    unfinalized_parents_buf[bit_i] = null;
+                }
+            }
+            node_id = path_parents[next_d_offset];
+            d_offset = next_d_offset;
         }
 
         return node_id;
     }
+
     /// Set multiple nodes in batch, editing and traversing nodes strictly once.
     /// - gindexes MUST be sorted in ascending order beforehand.
     pub fn setNodes(root_node: Id, pool: *Pool, gindices: []const Gindex, nodes: []Id) Error!Id {
@@ -699,38 +765,78 @@ pub const Id = enum(u32) {
         const path_len = base_gindex.pathLen();
 
         var path_parents_buf: [max_depth]Id = undefined;
+        // at each level, there is at most 1 unfinalized parent per traversal
+        // "unfinalized" means it may or may not be part of the new tree
+        var unfinalized_parents_buf: [max_depth]?Id = undefined;
         var path_lefts_buf: [max_depth]Id = undefined;
         var path_rights_buf: [max_depth]Id = undefined;
-
-        // TODO how to handle failing to resize here, especially after several allocs
-        errdefer pool.free(&path_parents_buf);
+        // right_move means it's part of the new tree, it happens when we traverse right
+        var right_move: [max_depth]bool = undefined;
 
         var node_id = root_node;
-        // The depth offset to start from, going from the current gindex to the next
-        // This is the offset of the first shared depth between the two indices
-        var d_offset: Depth = 0; // path_len - depth;
+        errdefer {
+            // at any points, node_id is the root of the in-progress new tree
+            if (node_id != root_node) pool.unref(node_id);
+            // orphaned nodes were unrefed along the way through unfinalized_parents_buf
+            // path_parents_buf may or maynot be part of the in-progress new tree, there is no issue to double unref()
+            pool.free(&path_parents_buf);
+        }
 
-        const states = pool.nodes.items(.state);
-        const lefts = pool.nodes.items(.left);
-        const rights = pool.nodes.items(.right);
+        // The shared depth between the previous and current index
+        // This is initialized as 0 since the first index has no previous index
+        var d_offset: Depth = 0;
 
-        // For each index specified
+        var states = pool.nodes.items(.state);
+        var lefts = pool.nodes.items(.left);
+        var rights = pool.nodes.items(.right);
+
+        // For each index specified, maintain/update path_lefts and path_rights from root (depth 0) all the way to path_len
+        // but only allocate and update path_parents from the next shared depth to path_len
         for (0..gindices.len) |i| {
             // Calculate the gindex bits for the current index
             const gindex = gindices[i];
 
-            try pool.alloc(path_parents_buf[d_offset..path_len]);
+            // Calculate the depth offset to navigate from current index to the next
+            const next_d_offset = if (i == gindices.len - 1)
+                // 0 because there is no next gindex, it also means node_id is now the new root
+                0
+            else
+                path_len - @as(Depth, @intCast(@bitSizeOf(usize) - @clz(@intFromEnum(gindex) ^ @intFromEnum(gindices[i + 1]))));
+
+            if (try pool.alloc(path_parents_buf[next_d_offset..path_len])) {
+                states = pool.nodes.items(.state);
+                lefts = pool.nodes.items(.left);
+                rights = pool.nodes.items(.right);
+            }
 
             var path = gindex.toPath();
 
             // Navigate down (to the depth offset), attaching any new updates
-            for (0..d_offset) |bit_i| {
-                if (path.left()) {
-                    path_lefts_buf[bit_i] = path_parents_buf[bit_i + 1];
-                } else {
-                    path_rights_buf[bit_i] = path_parents_buf[bit_i + 1];
+            // d_offset is the shared depth between the previous and current index so we can reuse path_lefts and path_rights up that point
+            // but update them to the path_parents to rebind starting from next_d_offset if needed
+            if (d_offset > next_d_offset) {
+                path.nextN(next_d_offset);
+                for (next_d_offset..d_offset) |bit_i| {
+                    if (path.left()) {
+                        path_lefts_buf[bit_i] = path_parents_buf[bit_i + 1];
+                        right_move[bit_i] = false;
+                        // move left, unfinalized
+                        unfinalized_parents_buf[bit_i] = path_parents_buf[bit_i];
+                    } else {
+                        path_rights_buf[bit_i] = path_parents_buf[bit_i + 1];
+                        right_move[bit_i] = true;
+                    }
+                    path.next();
                 }
-                path.next();
+            } else {
+                path.nextN(d_offset);
+            }
+
+            // right move at d_offset, make all unfinalized parents at lower levels as finalized
+            if (path.right()) {
+                for (d_offset + 1..path_len) |bit_i| {
+                    unfinalized_parents_buf[bit_i] = null;
+                }
             }
 
             // Navigate down (from the depth offset) to the current index, populating parents
@@ -743,10 +849,13 @@ pub const Id = enum(u32) {
                     path_lefts_buf[bit_i] = path_parents_buf[bit_i + 1];
                     path_rights_buf[bit_i] = rights[@intFromEnum(node_id)];
                     node_id = lefts[@intFromEnum(node_id)];
+                    right_move[bit_i] = false;
+                    unfinalized_parents_buf[bit_i] = path_parents_buf[bit_i];
                 } else {
                     path_lefts_buf[bit_i] = lefts[@intFromEnum(node_id)];
                     path_rights_buf[bit_i] = path_parents_buf[bit_i + 1];
                     node_id = rights[@intFromEnum(node_id)];
+                    right_move[bit_i] = true;
                 }
                 path.next();
             }
@@ -757,24 +866,31 @@ pub const Id = enum(u32) {
             if (path.left()) {
                 path_lefts_buf[path_len - 1] = nodes[i];
                 path_rights_buf[path_len - 1] = rights[@intFromEnum(node_id)];
+                right_move[path_len - 1] = false;
+                unfinalized_parents_buf[path_len - 1] = path_parents_buf[path_len - 1];
             } else {
                 path_lefts_buf[path_len - 1] = lefts[@intFromEnum(node_id)];
                 path_rights_buf[path_len - 1] = nodes[i];
+                right_move[path_len - 1] = true;
             }
-
-            // Calculate the depth offset to navigate from current index to the next
-            d_offset = if (i == gindices.len - 1)
-                path_len - gindex.pathLen()
-            else
-                path_len - @as(Depth, @intCast(@bitSizeOf(usize) - @clz(@intFromEnum(gindex) ^ @intFromEnum(gindices[i + 1]))));
 
             // Rebind upwards depth diff times
             try pool.rebind(
-                path_parents_buf[d_offset..path_len],
-                path_lefts_buf[d_offset..path_len],
-                path_rights_buf[d_offset..path_len],
+                path_parents_buf[next_d_offset..path_len],
+                path_lefts_buf[next_d_offset..path_len],
+                path_rights_buf[next_d_offset..path_len],
             );
-            node_id = path_parents_buf[d_offset];
+            // unref prev parents if it's not part of the new tree
+            // can only unref after the rebind
+            for (next_d_offset..path_len) |bit_i| {
+                if (right_move[bit_i] and unfinalized_parents_buf[bit_i] != null) {
+                    pool.unref(unfinalized_parents_buf[bit_i].?);
+                    unfinalized_parents_buf[bit_i] = null;
+                }
+            }
+
+            node_id = path_parents_buf[next_d_offset];
+            d_offset = next_d_offset;
         }
 
         return node_id;
