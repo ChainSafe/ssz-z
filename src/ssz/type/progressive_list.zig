@@ -9,23 +9,19 @@ const Depth = @import("hashing").Depth;
 const Node = @import("persistent_merkle_tree").Node;
 const progressive = @import("progressive.zig");
 
-pub fn FixedProgressiveListType(comptime ST: type, comptime _limit: comptime_int) type {
+pub fn FixedProgressiveListType(comptime ST: type) type {
     comptime {
         if (!isFixedType(ST)) {
             @compileError("ST must be fixed type");
-        }
-        if (_limit < 0) {
-            @compileError("limit must be greater than or equal to 0");
         }
     }
 
     return struct {
         pub const kind = TypeKind.progressive_list;
         pub const Element: type = ST;
-        pub const limit: usize = _limit;
         pub const Type: type = std.ArrayListUnmanaged(Element.Type);
         pub const min_size: usize = 0;
-        pub const max_size: usize = Element.fixed_size * limit;
+        pub const max_size: usize = std.math.maxInt(usize);
 
         pub const default_value: Type = Type.empty;
 
@@ -84,15 +80,6 @@ pub fn FixedProgressiveListType(comptime ST: type, comptime _limit: comptime_int
 
             const len = data.len / Element.fixed_size;
 
-            // If limit is 0, only empty lists are allowed
-            if (limit == 0 and len > 0) {
-                return error.InvalidSSZ;
-            }
-
-            if (len > limit) {
-                return error.InvalidSSZ;
-            }
-
             try out.resize(allocator, len);
             @memset(out.items[0..len], Element.default_value);
             for (0..len) |i| {
@@ -139,15 +126,6 @@ pub fn FixedProgressiveListType(comptime ST: type, comptime _limit: comptime_int
                     return error.InvalidSSZ;
                 };
 
-                // If limit is 0, only empty lists are allowed
-                if (limit == 0 and len > 0) {
-                    return error.InvalidSSZ;
-                }
-
-                if (len > limit) {
-                    return error.InvalidSSZ;
-                }
-
                 for (0..len) |i| {
                     try Element.serialized.validate(data[i * Element.fixed_size .. (i + 1) * Element.fixed_size]);
                 }
@@ -157,9 +135,6 @@ pub fn FixedProgressiveListType(comptime ST: type, comptime _limit: comptime_int
                 const len = std.math.divExact(usize, data.len, Element.fixed_size) catch {
                     return error.InvalidSSZ;
                 };
-                if (len > limit) {
-                    return error.InvalidSSZ;
-                }
                 return len;
             }
 
@@ -296,23 +271,19 @@ pub fn FixedProgressiveListType(comptime ST: type, comptime _limit: comptime_int
     };
 }
 
-pub fn VariableProgressiveListType(comptime ST: type, comptime _limit: comptime_int) type {
+pub fn VariableProgressiveListType(comptime ST: type) type {
     comptime {
         if (isFixedType(ST)) {
             @compileError("ST must not be fixed type");
-        }
-        if (_limit < 0) {
-            @compileError("limit must be greater than or equal to 0");
         }
     }
     return struct {
         const Self = @This();
         pub const kind = TypeKind.progressive_list;
         pub const Element: type = ST;
-        pub const limit: usize = _limit;
         pub const Type: type = std.ArrayListUnmanaged(Element.Type);
         pub const min_size: usize = 0;
-        pub const max_size: usize = Element.max_size * limit + 4 * limit;
+        pub const max_size: usize = std.math.maxInt(usize);
 
         pub const default_value: Type = Type.empty;
 
@@ -546,7 +517,7 @@ const BoolType = @import("bool.zig").BoolType;
 test "ListType - sanity" {
     const allocator = std.testing.allocator;
 
-    const Bytes = FixedProgressiveListType(UintType(8), 32);
+    const Bytes = FixedProgressiveListType(UintType(8));
 
     var b: Bytes.Type = Bytes.default_value;
     defer b.deinit(allocator);
@@ -558,7 +529,7 @@ test "ListType - sanity" {
     _ = Bytes.serializeIntoBytes(&b, b_buf);
     try Bytes.deserializeFromBytes(allocator, b_buf, &b);
 
-    const BytesBytes = VariableProgressiveListType(Bytes, 1024);
+    const BytesBytes = VariableProgressiveListType(Bytes);
     var b2: BytesBytes.Type = BytesBytes.default_value;
     defer b2.deinit(allocator);
     const b_elem: Bytes.Type = Bytes.default_value;

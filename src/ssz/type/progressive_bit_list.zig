@@ -11,7 +11,7 @@ const mixInLength = @import("hashing").mixInLength;
 const Node = @import("persistent_merkle_tree").Node;
 const progressive = @import("progressive.zig");
 
-pub fn ProgressiveBitList(comptime limit: comptime_int) type {
+pub fn ProgressiveBitList() type {
     return struct {
         data: std.ArrayListUnmanaged(u8),
         bit_len: usize,
@@ -26,10 +26,6 @@ pub fn ProgressiveBitList(comptime limit: comptime_int) type {
         }
 
         pub fn fromBitLen(allocator: std.mem.Allocator, bit_len: usize) !@This() {
-            if (bit_len > limit) {
-                return error.tooLarge;
-            }
-
             const byte_len = std.math.divCeil(usize, bit_len, 8) catch unreachable;
 
             var data = try std.ArrayListUnmanaged(u8).initCapacity(allocator, byte_len);
@@ -64,10 +60,6 @@ pub fn ProgressiveBitList(comptime limit: comptime_int) type {
         }
 
         pub fn resize(self: *@This(), allocator: std.mem.Allocator, bit_len: usize) !void {
-            if (bit_len > limit) {
-                return error.tooLarge;
-            }
-
             const old_byte_len = std.math.divCeil(usize, self.bit_len, 8) catch unreachable;
             const byte_len = std.math.divCeil(usize, bit_len, 8) catch unreachable;
             try self.data.resize(allocator, byte_len);
@@ -116,19 +108,13 @@ pub fn isProgressiveBitListType(ST: type) bool {
     return ST.kind == .progressive_bit_list;
 }
 
-pub fn ProgressiveBitListType(comptime _limit: comptime_int) type {
-    comptime {
-        if (_limit <= 0) {
-            @compileError("limit must be greater than 0");
-        }
-    }
+pub fn ProgressiveBitListType() type {
     return struct {
         pub const kind = TypeKind.progressive_bit_list;
         pub const Element: type = BoolType();
-        pub const limit: usize = _limit;
-        pub const Type: type = ProgressiveBitList(limit);
+        pub const Type: type = ProgressiveBitList();
         pub const min_size: usize = 1;
-        pub const max_size: usize = std.math.divCeil(usize, limit + 1, 8) catch unreachable;
+        pub const max_size: usize = std.math.maxInt(usize);
 
         pub const default_value: Type = Type.empty;
 
@@ -196,9 +182,6 @@ pub fn ProgressiveBitListType(comptime _limit: comptime_int) type {
             }
             const last_1_index: u3 = @intCast(7 - last_byte_clz);
             const bit_len = (data.len - 1) * 8 + last_1_index;
-            if (bit_len > limit) {
-                return error.tooLarge;
-            }
 
             try out.resize(allocator, bit_len);
             if (bit_len == 0) {
@@ -232,9 +215,7 @@ pub fn ProgressiveBitListType(comptime _limit: comptime_int) type {
                 }
                 const last_1_index: u3 = @intCast(7 - last_byte_clz);
                 const bit_len = (data.len - 1) * 8 + last_1_index;
-                if (bit_len > limit) {
-                    return error.tooLarge;
-                }
+                _ = bit_len;
             }
 
             pub fn length(data: []const u8) !usize {
@@ -251,9 +232,6 @@ pub fn ProgressiveBitListType(comptime _limit: comptime_int) type {
                 }
                 const last_1_index: u3 = @intCast(7 - last_byte_clz);
                 const bit_len = (data.len - 1) * 8 + last_1_index;
-                if (bit_len > limit) {
-                    return error.tooLarge;
-                }
                 return bit_len;
             }
 
@@ -393,7 +371,7 @@ pub fn ProgressiveBitListType(comptime _limit: comptime_int) type {
 
 test "ProgressiveBitListType - sanity" {
     const allocator = std.testing.allocator;
-    const Bits = ProgressiveBitListType(40);
+    const Bits = ProgressiveBitListType();
     var b: Bits.Type = try Bits.Type.fromBitLen(allocator, 30);
     defer b.deinit(allocator);
 

@@ -355,12 +355,19 @@ pub fn VariableProgressiveContainerType(comptime ST: type, comptime active_field
         _offsets[i] = _fixed_end;
         if (comptime isFixedType(field.type)) {
             _min_size += field.type.fixed_size;
-            _max_size += field.type.fixed_size;
+            if (_max_size != std.math.maxInt(usize)) {
+                _max_size += field.type.fixed_size;
+            }
             _fixed_end += field.type.fixed_size;
             _fixed_count += 1;
         } else {
             _min_size += field.type.min_size + 4;
-            _max_size += field.type.max_size + 4;
+            // Handle unbounded types (max_size == maxInt(usize))
+            if (field.type.max_size == std.math.maxInt(usize) or _max_size == std.math.maxInt(usize)) {
+                _max_size = std.math.maxInt(usize);
+            } else {
+                _max_size += field.type.max_size + 4;
+            }
             _fixed_end += 4;
         }
 

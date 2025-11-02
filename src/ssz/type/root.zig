@@ -42,9 +42,9 @@ pub const ProgressiveBitListType = @import("progressive_bit_list.zig").Progressi
 pub const ProgressiveBitList = @import("progressive_bit_list.zig").ProgressiveBitList;
 pub const isProgressiveBitListType = @import("progressive_bit_list.zig").isProgressiveBitListType;
 
-pub fn ProgressiveListType(comptime ST: type, comptime limit: comptime_int) type {
+pub fn ProgressiveListType(comptime ST: type) type {
     if (isFixedType(ST)) {
-        return FixedProgressiveListType(ST, limit);
+        return FixedProgressiveListType(ST);
     } else {
         return VariableProgressiveListType(ST);
     }

@@ -127,7 +127,12 @@ pub fn CompatibleUnionType(comptime options: anytype) type {
         const option_min = if (@hasDecl(option_type, "min_size")) option_type.min_size else option_type.fixed_size;
         const option_max = if (@hasDecl(option_type, "max_size")) option_type.max_size else option_type.fixed_size;
         _min_size = @min(_min_size, option_min + 1);
-        _max_size = @max(_max_size, option_max + 1);
+        // Handle unbounded types (max_size == maxInt(usize))
+        if (option_max == std.math.maxInt(usize)) {
+            _max_size = std.math.maxInt(usize);
+        } else {
+            _max_size = @max(_max_size, option_max + 1);
+        }
     }
 
     return struct {

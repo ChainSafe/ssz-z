@@ -18,7 +18,7 @@ pub fn main() !void {
         \\const types = @import("generic_types.zig");
         \\const test_case = @import("test_case.zig");
         \\
-        \\const generic_tests_dir_name = "general/phase0/ssz_generic";
+        \\const generic_tests_dir_name = "general/tests/general/phase0/ssz_generic";
         \\const allocator = std.testing.allocator;
         \\
         \\
@@ -27,6 +27,8 @@ pub fn main() !void {
     const generic_tests_dir_name = try std.fs.path.join(allocator, &[_][]const u8{
         spec_test_options.spec_test_out_dir,
         spec_test_options.spec_test_version,
+        "general",
+        "tests",
         "general",
         "phase0",
         "ssz_generic",
@@ -89,6 +91,12 @@ pub fn main() !void {
             const test_name = invalid_test_entry.name;
             const type_name = getTypeName(test_dir_name, test_name);
 
+            // Skip invalid types that would be caught at compile time
+            // (e.g., vec_uint8_0 - a zero-length vector can't have invalid serialization)
+            if (std.mem.indexOf(u8, type_name, "vec_") != null and std.mem.indexOf(u8, type_name, "_0") != null) {
+                continue;
+            }
+
             try writeInvalidTest(writer, test_name, test_dir_name, type_name);
         }
     }
@@ -104,12 +112,20 @@ fn getTypeName(test_dir_name: []const u8, test_name: []const u8) []const u8 {
         _ = split_it.next();
         return test_name[0 .. (split_it.index orelse (split_it.buffer.len + 1)) - 1];
     } else if (std.mem.eql(u8, test_dir_name, "basic_progressive_list")) {
-        // Include the limit in the mapped type name, e.g. proglist_uint32_20
+        // Test name pattern: proglist_{type}_{variant}_{limit}
+        // Type name should be: proglist_{type} 
         var split_it = std.mem.splitScalar(u8, test_name, '_');
-        _ = split_it.next(); // proglist
-        _ = split_it.next(); // uintXX
-        _ = split_it.next(); // limit
-        return test_name[0 .. (split_it.index orelse (split_it.buffer.len + 1)) - 1];
+        const part1 = split_it.next() orelse unreachable; // proglist
+        const part2 = split_it.next() orelse unreachable; // uintXX or bool
+        // Reconstruct as proglist_{type}
+        var result = std.ArrayList(u8).init(std.heap.page_allocator);
+        result.appendSlice(part1) catch unreachable;
+        result.append('_') catch unreachable;
+        result.appendSlice(part2) catch unreachable;
+        return result.items;
+    } else if (std.mem.eql(u8, test_dir_name, "progressive_bitlist")) {
+        // All progressive bitlist tests map to the same base type
+        return "progbitlist";
     } else if (std.mem.eql(u8, test_dir_name, "containers")) {
         var split_it = std.mem.splitScalar(u8, test_name, '_');
         return split_it.first();
@@ -122,6 +138,18 @@ fn getTypeName(test_dir_name: []const u8, test_name: []const u8) []const u8 {
             return test_name[0 .. idx + "TestStruct".len];
         } else if (std.mem.indexOf(u8, test_name, "Struct")) |idx| {
             return test_name[0 .. idx + "Struct".len];
+        }
+        return test_name;
+    } else if (std.mem.eql(u8, test_dir_name, "compatible_unions")) {
+        // Compatible union test names: CompatibleUnionABCA_random_selector_1_3
+        // Type name should be: CompatibleUnionABCA (or CompatibleUnionA, CompatibleUnionBC)
+        // Strip everything after the first underscore following the base type name
+        if (std.mem.startsWith(u8, test_name, "CompatibleUnionABCA_")) {
+            return "CompatibleUnionABCA";
+        } else if (std.mem.startsWith(u8, test_name, "CompatibleUnionBC_")) {
+            return "CompatibleUnionBC";
+        } else if (std.mem.startsWith(u8, test_name, "CompatibleUnionA_")) {
+            return "CompatibleUnionA";
         }
         return test_name;
     } else {

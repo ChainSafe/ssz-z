@@ -45,8 +45,8 @@ pub fn parseYaml(comptime ST: type, allocator: Allocator, y: yaml.Yaml, out: *ST
         }
         return error.InvalidSelector;
     } else if (comptime ssz.isBitListType(ST) or ssz.isProgressiveBitListType(ST)) {
-        const bytes_buf = try allocator.alloc(u8, ((ST.limit + 7) / 8) + 2);
         const yaml_bytes = try y.parse(allocator, []const u8);
+        const bytes_buf = try allocator.alloc(u8, hex.byteLenFromHex(yaml_bytes));
         const data = try hex.hexToBytes(bytes_buf, yaml_bytes);
         // we need to find the padding bit to find the bit_len, and then remove it
         // do this manually, otherwise we're testing the deserialization codepath against itself

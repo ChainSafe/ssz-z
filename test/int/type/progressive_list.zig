@@ -6,7 +6,7 @@ const TestCase = @import("common.zig").TypeTestCase;
 test "ProgressiveListType(u64) vector tests" {
     const a = std.testing.allocator;
     const U64 = types.UintType(64);
-    const PList = types.ProgressiveListType(U64, 1024);
+    const PList = types.ProgressiveListType(U64);
     const TypeTest = @import("common.zig").typeTest(PList);
 
     const testCases = [_]TestCase{
