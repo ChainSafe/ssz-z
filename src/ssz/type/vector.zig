@@ -16,8 +16,8 @@ pub fn FixedVectorType(comptime ST: type, comptime _length: comptime_int) type {
         if (!isFixedType(ST)) {
             @compileError("ST must be fixed type");
         }
-        if (_length <= 0) {
-            @compileError("length must be greater than 0");
+        if (_length < 0) {
+            @compileError("length must be greater than or equal to 0");
         }
     }
     return struct {
@@ -65,6 +65,9 @@ pub fn FixedVectorType(comptime ST: type, comptime _length: comptime_int) type {
         }
 
         pub fn deserializeFromBytes(data: []const u8, out: *Type) !void {
+            if (length == 0) {
+                return error.invalidSize;
+            }
             if (data.len != fixed_size) {
                 return error.invalidSize;
             }
@@ -79,6 +82,9 @@ pub fn FixedVectorType(comptime ST: type, comptime _length: comptime_int) type {
 
         pub const serialized = struct {
             pub fn validate(data: []const u8) !void {
+                if (length == 0) {
+                    return error.invalidSize;
+                }
                 if (data.len != fixed_size) {
                     return error.invalidSize;
                 }
@@ -187,8 +193,8 @@ pub fn VariableVectorType(comptime ST: type, comptime _length: comptime_int) typ
         if (isFixedType(ST)) {
             @compileError("ST must not be fixed type");
         }
-        if (_length <= 0) {
-            @compileError("length must be greater than 0");
+        if (_length < 0) {
+            @compileError("length must be greater than or equal to 0");
         }
     }
     return struct {
@@ -250,6 +256,9 @@ pub fn VariableVectorType(comptime ST: type, comptime _length: comptime_int) typ
         }
 
         pub fn deserializeFromBytes(allocator: std.mem.Allocator, data: []const u8, out: *Type) !void {
+            if (length == 0) {
+                return error.InvalidSize;
+            }
             if (data.len > max_size or data.len < min_size) {
                 return error.InvalidSize;
             }
@@ -273,6 +282,9 @@ pub fn VariableVectorType(comptime ST: type, comptime _length: comptime_int) typ
 
         pub const serialized = struct {
             pub fn validate(data: []const u8) !void {
+                if (length == 0) {
+                    return error.InvalidSize;
+                }
                 if (data.len > max_size or data.len < min_size) {
                     return error.InvalidSize;
                 }

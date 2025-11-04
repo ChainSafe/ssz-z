@@ -79,6 +79,7 @@ pub fn main() !void {
 
         const invalid_tests_dir = try std.fs.cwd().openDir(invalid_tests_dir_name, .{ .iterate = true });
         var invalid_tests_dir_it = invalid_tests_dir.iterate();
+
         while (try invalid_tests_dir_it.next()) |invalid_test_entry| {
             switch (invalid_test_entry.kind) {
                 .directory => {},
@@ -90,7 +91,8 @@ pub fn main() !void {
             const test_name = invalid_test_entry.name;
             const type_name = getTypeName(test_dir_name, test_name);
 
-            // we must skip some invalid types (that would have gotten caught at compile time)
+            // Skip invalid types that would be caught at compile time
+            // (e.g., vec_uint8_0 - a zero-length vector can't have invalid serialization)
             if (std.mem.indexOf(u8, type_name, "vec_") != null and std.mem.indexOf(u8, type_name, "_0") != null) {
                 continue;
             }
@@ -109,9 +111,47 @@ fn getTypeName(test_dir_name: []const u8, test_name: []const u8) []const u8 {
         _ = split_it.next();
         _ = split_it.next();
         return test_name[0 .. (split_it.index orelse (split_it.buffer.len + 1)) - 1];
+    } else if (std.mem.eql(u8, test_dir_name, "basic_progressive_list")) {
+        // Test name pattern: proglist_{type}_{variant}_{limit}
+        // Type name should be: proglist_{type} 
+        var split_it = std.mem.splitScalar(u8, test_name, '_');
+        const part1 = split_it.next() orelse unreachable; // proglist
+        const part2 = split_it.next() orelse unreachable; // uintXX or bool
+        // Reconstruct as proglist_{type}
+        var result = std.ArrayList(u8).init(std.heap.page_allocator);
+        result.appendSlice(part1) catch unreachable;
+        result.append('_') catch unreachable;
+        result.appendSlice(part2) catch unreachable;
+        return result.items;
+    } else if (std.mem.eql(u8, test_dir_name, "progressive_bitlist")) {
+        // All progressive bitlist tests map to the same base type
+        return "progbitlist";
     } else if (std.mem.eql(u8, test_dir_name, "containers")) {
         var split_it = std.mem.splitScalar(u8, test_name, '_');
         return split_it.first();
+    } else if (std.mem.eql(u8, test_dir_name, "progressive_containers")) {
+        // Progressive container test names have the pattern: TypeName_variant_number or TypeName_variant_chaos_number
+        // We need to extract just the TypeName, which ends with "TestStruct" or "Struct"
+        // e.g., "ProgressiveSingleFieldContainerTestStruct_max" -> "ProgressiveSingleFieldContainerTestStruct"
+        // e.g., "ProgressiveSingleListContainerTestStruct_nil_9" -> "ProgressiveSingleListContainerTestStruct"
+        if (std.mem.indexOf(u8, test_name, "TestStruct")) |idx| {
+            return test_name[0 .. idx + "TestStruct".len];
+        } else if (std.mem.indexOf(u8, test_name, "Struct")) |idx| {
+            return test_name[0 .. idx + "Struct".len];
+        }
+        return test_name;
+    } else if (std.mem.eql(u8, test_dir_name, "compatible_unions")) {
+        // Compatible union test names: CompatibleUnionABCA_random_selector_1_3
+        // Type name should be: CompatibleUnionABCA (or CompatibleUnionA, CompatibleUnionBC)
+        // Strip everything after the first underscore following the base type name
+        if (std.mem.startsWith(u8, test_name, "CompatibleUnionABCA_")) {
+            return "CompatibleUnionABCA";
+        } else if (std.mem.startsWith(u8, test_name, "CompatibleUnionBC_")) {
+            return "CompatibleUnionBC";
+        } else if (std.mem.startsWith(u8, test_name, "CompatibleUnionA_")) {
+            return "CompatibleUnionA";
+        }
+        return test_name;
     } else {
         var split_it = std.mem.splitScalar(u8, test_name, '_');
         _ = split_it.next();
