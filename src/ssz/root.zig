@@ -2,6 +2,7 @@ const std = @import("std");
 const testing = std.testing;
 
 pub const types = @import("type/root.zig");
+pub const BYTES_PER_CHUNK = types.BYTES_PER_CHUNK;
 
 pub const TypeKind = types.TypeKind;
 pub const isBasicType = types.isBasicType;

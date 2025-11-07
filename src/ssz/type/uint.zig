@@ -79,12 +79,12 @@ pub fn UintType(comptime bits: comptime_int) type {
                 out.* = std.mem.readInt(Type, hash[offset..][0..fixed_size], .little);
             }
 
-            pub fn fromValuePacked(node: Node.Id, pool: *Node.Pool, index: usize, value: *const Type) !void {
+            pub fn fromValuePacked(node: Node.Id, pool: *Node.Pool, index: usize, value: *const Type) !Node.Id {
                 const hash = node.getRoot(pool);
                 var new_leaf: [32]u8 = hash.*;
-                const offset = index % (32 / bytes);
+                const offset = (index * bytes) % 32;
                 std.mem.writeInt(Type, new_leaf[offset..][0..bytes], value.*, .little);
-                return try pool.createLeaf(new_leaf, false);
+                return try pool.createLeaf(&new_leaf, false);
             }
         };
 
