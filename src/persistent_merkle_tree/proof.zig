@@ -1,7 +1,6 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
-const hashOne = @import("hashing").hashOne;
 const GindexUint = @import("hashing").GindexUint;
 const Node = @import("Node.zig");
 const Gindex = @import("gindex.zig").Gindex;
@@ -13,8 +12,6 @@ pub const Error = error{
     OutOfMemory,
     /// Provided generalized index is not part of the binary tree (must be >= 1).
     InvalidGindex,
-    /// Navigation toward the requested index hit a leaf before reaching the expected depth.
-    InvalidNavigation,
     /// Witness list length does not match the gindex path length.
     InvalidWitnessLength,
 };
@@ -54,10 +51,8 @@ pub fn createSingleProof(
     var node_id = root;
     var path = gindex.toPath();
 
-    const witness_leaf_offset: usize = 1;
-
     for (0..path_len) |depth_idx| {
-        const witness_index = path_len - witness_leaf_offset - depth_idx;
+        const witness_index = path_len - 1 - depth_idx;
 
         if (path.left()) {
             const right_id = try node_id.getRight(pool);
@@ -95,15 +90,18 @@ pub fn createNodeFromSingleProof(
     }
 
     var node_id = try pool.createLeaf(&leaf, false);
+    errdefer pool.unref(node_id);
     var index_value: GindexUint = @intFromEnum(gindex);
 
     for (witnesses) |witness| {
         const sibling_id = try pool.createLeaf(&witness, false);
+        errdefer pool.unref(sibling_id);
 
         node_id = try if ((index_value & 1) == 0)
             pool.createBranch(node_id, sibling_id, false)
         else
             pool.createBranch(sibling_id, node_id, false);
+
         index_value >>= 1;
     }
 
