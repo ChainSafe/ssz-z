@@ -3,6 +3,7 @@ const Depth = @import("hashing").Depth;
 const Node = @import("persistent_merkle_tree").Node;
 const Gindex = @import("persistent_merkle_tree").Gindex;
 const isBasicType = @import("type/type_kind.zig").isBasicType;
+const BYTES_PER_CHUNK = @import("type/root.zig").BYTES_PER_CHUNK;
 
 pub const Data = struct {
     root: Node.Id,
@@ -129,23 +130,34 @@ pub fn TreeView(comptime ST: type) type {
         else
             TreeView(ST.Element);
 
+        inline fn elementChildGindex(index: usize) Gindex {
+            return Gindex.fromDepth(
+                // Lists mix in their length at one extra depth level.
+                ST.chunk_depth + if (ST.kind == .list) 1 else 0,
+                if (comptime isBasicType(ST.Element)) blk: {
+                    const per_chunk = BYTES_PER_CHUNK / ST.Element.fixed_size;
+                    break :blk index / per_chunk;
+                } else index,
+            );
+        }
+
         /// Get an element by index. If the element is a basic type, returns the value directly.
         /// Caller borrows a copy of the value so there is no need to deinit it.
-        pub fn getElement(self: *Self, index: usize) Element {
+        pub fn getElement(self: *Self, index: usize) !Element {
             if (ST.kind != .vector and ST.kind != .list) {
                 @compileError("getElement can only be used with vector or list types");
             }
-            const child_gindex = Gindex.fromDepth(ST.chunk_depth, index);
+            const child_gindex = elementChildGindex(index);
             if (comptime isBasicType(ST.Element)) {
                 var value: ST.Element.Type = undefined;
                 const child_node = try self.getChildNode(child_gindex);
-                try ST.Element.tree.toValue(child_node, self.pool, &value);
+                try ST.Element.tree.toValuePacked(child_node, self.pool, index, &value);
                 return value;
             } else {
                 const child_data = try self.getChildData(child_gindex);
 
                 // TODO only update changed if the subview is mutable
-                self.data.changed.put(child_gindex, void);
+                try self.data.changed.put(child_gindex, {});
 
                 return TreeView(ST.Element){
                     .allocator = self.allocator,
@@ -163,11 +175,11 @@ pub fn TreeView(comptime ST: type) type {
             if (ST.kind != .vector and ST.kind != .list) {
                 @compileError("setElement can only be used with vector or list types");
             }
-            const child_gindex = Gindex.fromDepth(ST.chunk_depth, index);
-            try self.data.changed.put(child_gindex, void);
+            const child_gindex = elementChildGindex(index);
+            try self.data.changed.put(child_gindex, {});
             if (comptime isBasicType(ST.Element)) {
                 const child_node = try self.getChildNode(child_gindex);
-                try self.data.children_nodes.put(
+                const opt_old_node = try self.data.children_nodes.fetchPut(
                     child_gindex,
                     try ST.Element.tree.fromValuePacked(
                         child_node,
@@ -176,6 +188,13 @@ pub fn TreeView(comptime ST: type) type {
                         &value,
                     ),
                 );
+                if (opt_old_node) |old_node| {
+                    // Multiple set() calls before commit() leave our previous temp nodes cached with refcount 0.
+                    // Tree-owned nodes already have a refcount, so skip unref in that case.
+                    if (old_node.value.getState(self.pool).getRefCount() == 0) {
+                        self.pool.unref(old_node.value);
+                    }
+                }
             } else {
                 const opt_old_data = try self.data.children_data.fetchPut(
                     child_gindex,
@@ -246,7 +265,11 @@ pub fn TreeView(comptime ST: type) type {
                     ),
                 );
                 if (opt_old_node) |old_node| {
-                    self.pool.unref(old_node.value);
+                    // Multiple set() calls before commit() leave our previous temp nodes cached with refcount 0.
+                    // Tree-owned nodes already have a refcount, so skip unref in that case.
+                    if (old_node.value.getState(self.pool).getRefCount() == 0) {
+                        self.pool.unref(old_node.value);
+                    }
                 }
             } else {
                 const opt_old_data = try self.data.children_data.fetchPut(

@@ -761,6 +761,9 @@ pub const Id = enum(u32) {
         }
 
         const base_gindex = gindices[0];
+        if (@intFromEnum(base_gindex) <= 1) {
+            return nodes[0];
+        }
 
         const path_len = base_gindex.pathLen();
 
