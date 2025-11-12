@@ -1,5 +1,10 @@
 # ssz-z
 
+This repositiry is now archived.
+The codebase now lives at https://github.com/ChainSafe/lodestar-z
+
+---
+
 A Zig implementation of Ethereum’s [SSZ (Simple Serialize)](https://github.com/ethereum/consensus-specs/tree/dev/ssz) serialization format, Merkleization, and consensus‐type definitions. Provides:
 
 - Hashing utilities (SHA‑256, zero‐hash tree, Merkleization)
